@@ -1,0 +1,12 @@
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+*.duckdb
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+target/
+dbt_packages/
+logs/
