@@ -1,0 +1,10 @@
+TBD.
+
+This file must hold the real output of `dbt build --profiles-dir .` run on Vikram's machine
+against the real dataset (python/audit.py already produces data/raw/online_retail_ii_combined.parquet
+from the real xlsx). Per the project's ground rules, no invented numbers: this stays TBD until
+that real run happens and its output is pasted in here.
+
+See docs/evidence/p1_sandbox_test_log.txt for the sandbox's own verification run against a small
+synthetic fixture (used only to confirm the project is mechanically correct before shipping it;
+not a substitute for this file).

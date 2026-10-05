@@ -1,0 +1,73 @@
+=== Build sandbox verification run (synthetic fixture, NOT real data) ===
+Run date: 2026-10-05T12:19:33Z
+Purpose: demonstrate the raw-layer duplicate test genuinely fails (at its real,
+default error severity) against known-dirty data, before any cleaning is
+applied -- this is the exercise Phase 1 asks for, run here first against a small
+fixture with one known injected duplicate, to prove the test actually catches it.
+This is NOT the required Phase 1 evidence -- that must come from a real run
+against the real 1,067,371-row dataset on Vikram's machine, which will show
+~34,335 duplicates per docs/audit.md section 4, not 1. See p1_dbt_build.txt (TBD).
+
+--- dbt build, cutoff A (2011-03-01), full default severity ---
+[0m12:19:35  Running with dbt=1.12.5
+[0m12:19:35  Registered adapter: duckdb=1.11.0
+[0m12:19:35  Unable to do partial parsing because saved manifest not found. Starting full parse.
+functionality
+Found top-level arguments to test `relationships` defined on 'mart_churn_labels'
+in package 'churn_clv_dbt' (models/marts/_marts.yml). Arguments to generic tests
+should be nested under the `arguments` property.
+[0m12:19:37  Found 6 models, 25 data tests, 500 macros
+[0m12:19:37  
+[0m12:19:37  Concurrency: 4 threads (target='dev')
+[0m12:19:37  
+[0m12:19:37  1 of 31 START sql view model main.stg_online_retail_raw ........................ [RUN]
+[0m12:19:37  1 of 31 OK created sql view model main.stg_online_retail_raw ................... [[32mOK[0m in 0.10s]
+[0m12:19:37  3 of 31 START test not_null_stg_online_retail_raw_invoice_date ................. [RUN]
+[0m12:19:37  2 of 31 START test not_null_stg_online_retail_raw_invoice ...................... [RUN]
+[0m12:19:37  4 of 31 START test not_null_stg_online_retail_raw_price ........................ [RUN]
+[0m12:19:37  5 of 31 START test not_null_stg_online_retail_raw_quantity ..................... [RUN]
+[0m12:19:38  4 of 31 PASS not_null_stg_online_retail_raw_price .............................. [[32mPASS[0m in 0.10s]
+[0m12:19:38  6 of 31 START test not_null_stg_online_retail_raw_row_key ...................... [RUN]
+[0m12:19:38  2 of 31 PASS not_null_stg_online_retail_raw_invoice ............................ [[32mPASS[0m in 0.10s]
+[0m12:19:38  3 of 31 PASS not_null_stg_online_retail_raw_invoice_date ....................... [[32mPASS[0m in 0.11s]
+[0m12:19:38  5 of 31 PASS not_null_stg_online_retail_raw_quantity ........................... [[32mPASS[0m in 0.10s]
+[0m12:19:38  7 of 31 START test not_null_stg_online_retail_raw_stock_code ................... [RUN]
+[0m12:19:38  8 of 31 START test unique_stg_online_retail_raw_row_key ........................ [RUN]
+[0m12:19:38  6 of 31 PASS not_null_stg_online_retail_raw_row_key ............................ [[32mPASS[0m in 0.08s]
+[0m12:19:38  8 of 31 FAIL 1 unique_stg_online_retail_raw_row_key ............................ [[31mFAIL 1[0m in 0.07s]
+[0m12:19:38  7 of 31 PASS not_null_stg_online_retail_raw_stock_code ......................... [[32mPASS[0m in 0.07s]
+[0m12:19:38  9 of 31 SKIP relation main.stg_non_product_lines ............................... [[33mSKIP[0m]
+[0m12:19:38  10 of 31 SKIP relation main.stg_online_retail .................................. [[33mSKIP[0m]
+[0m12:19:38  12 of 31 SKIP test not_null_stg_online_retail_invoice .......................... [[33mSKIP[0m]
+[0m12:19:38  13 of 31 SKIP test not_null_stg_online_retail_invoice_date ..................... [[33mSKIP[0m]
+[0m12:19:38  14 of 31 SKIP test not_null_stg_online_retail_price ............................ [[33mSKIP[0m]
+[0m12:19:38  11 of 31 SKIP test not_null_stg_non_product_lines_non_product_reason ........... [[33mSKIP[0m]
+[0m12:19:38  15 of 31 SKIP test not_null_stg_online_retail_quantity ......................... [[33mSKIP[0m]
+[0m12:19:38  16 of 31 SKIP test not_null_stg_online_retail_stock_code ....................... [[33mSKIP[0m]
+[0m12:19:38  17 of 31 SKIP relation main.int_customer_orders ................................ [[33mSKIP[0m]
+[0m12:19:38  18 of 31 SKIP relation main.mart_customer_features ............................. [[33mSKIP[0m]
+[0m12:19:38  19 of 31 SKIP test no_feature_leakage .......................................... [[33mSKIP[0m]
+[0m12:19:38  23 of 31 SKIP test not_null_mart_customer_features_recency_days ................ [[33mSKIP[0m]
+[0m12:19:38  22 of 31 SKIP test not_null_mart_customer_features_frequency ................... [[33mSKIP[0m]
+[0m12:19:38  20 of 31 SKIP test not_null_mart_customer_features_customer_id ................. [[33mSKIP[0m]
+[0m12:19:38  24 of 31 SKIP test revenue_reconciles .......................................... [[33mSKIP[0m]
+[0m12:19:38  21 of 31 SKIP test not_null_mart_customer_features_cutoff_date ................. [[33mSKIP[0m]
+[0m12:19:38  25 of 31 SKIP relation main.mart_churn_labels .................................. [[33mSKIP[0m]
+[0m12:19:38  27 of 31 SKIP test no_label_leakage ............................................ [[33mSKIP[0m]
+[0m12:19:38  30 of 31 SKIP test not_null_mart_churn_labels_cutoff_date ...................... [[33mSKIP[0m]
+[0m12:19:38  26 of 31 SKIP test accepted_values_mart_churn_labels_churned__0__1 ............. [[33mSKIP[0m]
+[0m12:19:38  29 of 31 SKIP test not_null_mart_churn_labels_customer_id ...................... [[33mSKIP[0m]
+[0m12:19:38  28 of 31 SKIP test not_null_mart_churn_labels_churned .......................... [[33mSKIP[0m]
+[0m12:19:38  31 of 31 SKIP test relationships_mart_churn_labels_customer_id__customer_id__ref_mart_customer_features_  [[33mSKIP[0m]
+[0m12:19:38  
+[0m12:19:38  Finished running 2 incremental models, 25 data tests, 4 view models in 0 hours 0 minutes and 0.50 seconds (0.50s).
+[0m12:19:38  
+[0m12:19:38  [31mCompleted with 1 error, 0 partial successes, and 0 warnings:[0m
+[0m12:19:38  
+[0m12:19:38  [[31mERROR[0m]: in test unique_stg_online_retail_raw_row_key (models/staging/_staging_raw.yml)
+[0m12:19:38    Got 1 result, configured to fail if != 0
+[0m12:19:38  
+[0m12:19:38    compiled code at target/compiled/churn_clv_dbt/models/staging/_staging_raw.yml/unique_stg_online_retail_raw_row_key.sql
+[0m12:19:38  
+[0m12:19:38  Done. PASS=7 WARN=0 ERROR=1 SKIP=23 NO-OP=0 REUSED=0 TOTAL=31
+parsing.
