@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: stg_online_retail
+    description: >
+      Cleaned merchandise purchase lines (including cancellations, kept as
+      negative line items). One row per surviving line item after the three
+      exclusion rules in docs/design.md. Customer ID can still be null here
+      (guest-checkout-style rows); that's expected and handled at the
+      population level in the marts, not here.
+    columns:
+      - name: invoice
+        tests: [not_null]
+      - name: stock_code
+        tests: [not_null]
+      - name: quantity
+        tests: [not_null]
+      - name: invoice_date
+        tests: [not_null]
+      - name: price
+        tests: [not_null]
+
+  - name: stg_non_product_lines
+    description: >
+      Non-merchandise lines (postage, fees, discounts, write-offs, test
+      rows, etc.) routed out of stg_online_retail. Kept and labeled with a
+      reason instead of being dropped silently.
+    columns:
+      - name: non_product_reason
+        tests: [not_null]

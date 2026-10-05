@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_online_retail_raw
+    description: >
+      Raw, lightly-typed pass-through from the raw parquet file. Not
+      deduplicated, not filtered. Tests here are expected to show real
+      failures (missing Customer ID, exact-duplicate rows) the first time
+      this is run against the real dataset -- that is intended, see
+      BUGLOG.md and docs/audit.md, not a bug in this model.
+    columns:
+      - name: row_key
+        description: md5 hash of all 8 raw columns, used to test for exact duplicates.
+        tests:
+          - unique
+          - not_null
+      - name: invoice
+        tests:
+          - not_null
+      - name: stock_code
+        tests:
+          - not_null
+      - name: quantity
+        tests:
+          - not_null
+      - name: invoice_date
+        tests:
+          - not_null
+      - name: price
+        tests:
+          - not_null
+      - name: customer_id
+        description: >
+          Expected to have real nulls (22.77% of rows per docs/audit.md).
+          Not tested not_null here on purpose -- that would just be
+          re-discovering a known, already-documented fact about this data,
+          not catching a bug.
