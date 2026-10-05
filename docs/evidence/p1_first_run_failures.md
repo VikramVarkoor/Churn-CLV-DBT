@@ -40,8 +40,12 @@ intended. `mart_customer_features` and `mart_churn_labels` built, and `no_featur
 `no_label_leakage`, and `revenue_reconciles` all ran and PASSed against the real dataset for the
 first time. Full output in docs/evidence/p1_dbt_build.txt.
 
+Cutoff B (2011-09-01) re-run on 2026-10-05: identical shape, `PASS=30 WARN=1 ERROR=0 SKIP=0
+NO-OP=0 REUSED=0 TOTAL=31`. Full output in docs/evidence/p1_dbt_build.txt.
+
 Still pending, real:
 
-- `dbt build` for cutoff B (`make build-test` or the direct `dbt build --vars ...` command), to
-  confirm both cutoffs accumulate in the same incremental table as designed. TBD.
+- A direct query confirming `mart_customer_features` and `mart_churn_labels` hold rows for BOTH
+  `cutoff_date` values together (not just the most recent one, which incremental delete+insert
+  could silently get wrong if the unique_key were mis-set). TBD.
 - The 32,907 vs 34,335 reconciliation above. TBD.
