@@ -2,3 +2,5 @@ pandas
 duckdb
 openpyxl
 pyarrow
+dbt-core
+dbt-duckdb
