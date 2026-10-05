@@ -83,4 +83,90 @@ parsing.
 
 ----------------------------------------------------------------------------------------------
 
-Second run (after severity fix, both cutoffs): TBD.
+Second run, cutoff A (2011-03-01), after the severity fix. Pasted verbatim, 2026-10-05. This is
+the real evidence for Phase 1's acceptance criteria: marts built, no_feature_leakage,
+no_label_leakage, and revenue_reconciles all actually ran and passed against the real dataset.
+
+12:31:46  Running with dbt=1.12.5
+12:31:46  Registered adapter: duckdb=1.11.0
+12:31:47  Found 6 models, 25 data tests, 500 macros
+12:31:47
+12:31:47  Concurrency: 4 threads (target='dev')
+12:31:47
+12:31:47  1 of 31 START sql view model main.stg_online_retail_raw ........................ [RUN]
+12:31:47  1 of 31 OK created sql view model main.stg_online_retail_raw ................... [OK in 0.06s]
+12:31:47  4 of 31 START test not_null_stg_online_retail_raw_price ........................ [RUN]
+12:31:47  5 of 31 START test not_null_stg_online_retail_raw_quantity ..................... [RUN]
+12:31:47  3 of 31 START test not_null_stg_online_retail_raw_invoice_date ................. [RUN]
+12:31:47  2 of 31 START test not_null_stg_online_retail_raw_invoice ...................... [RUN]
+12:31:47  5 of 31 PASS not_null_stg_online_retail_raw_quantity ........................... [PASS in 0.05s]
+12:31:47  6 of 31 START test not_null_stg_online_retail_raw_row_key ...................... [RUN]
+12:31:47  2 of 31 PASS not_null_stg_online_retail_raw_invoice ............................ [PASS in 0.05s]
+12:31:47  4 of 31 PASS not_null_stg_online_retail_raw_price .............................. [PASS in 0.06s]
+12:31:47  3 of 31 PASS not_null_stg_online_retail_raw_invoice_date ....................... [PASS in 0.05s]
+12:31:47  8 of 31 START test unique_stg_online_retail_raw_row_key ........................ [RUN]
+12:31:47  7 of 31 START test not_null_stg_online_retail_raw_stock_code ................... [RUN]
+12:31:47  7 of 31 PASS not_null_stg_online_retail_raw_stock_code ......................... [PASS in 0.02s]
+12:31:48  6 of 31 PASS not_null_stg_online_retail_raw_row_key ............................ [PASS in 0.84s]
+12:31:49  8 of 31 WARN 32907 unique_stg_online_retail_raw_row_key ........................ [WARN 32907 in 1.51s]
+12:31:49  9 of 31 START sql view model main.stg_non_product_lines ........................ [RUN]
+12:31:49  10 of 31 START sql view model main.stg_online_retail ........................... [RUN]
+12:31:49  10 of 31 OK created sql view model main.stg_online_retail ...................... [OK in 0.02s]
+12:31:49  9 of 31 OK created sql view model main.stg_non_product_lines ................... [OK in 0.02s]
+12:31:49  14 of 31 START test not_null_stg_online_retail_quantity ........................ [RUN]
+12:31:49  12 of 31 START test not_null_stg_online_retail_invoice_date .................... [RUN]
+12:31:49  13 of 31 START test not_null_stg_online_retail_price ........................... [RUN]
+12:31:49  11 of 31 START test not_null_stg_online_retail_invoice ......................... [RUN]
+12:31:49  13 of 31 PASS not_null_stg_online_retail_price ................................. [PASS in 0.03s]
+12:31:49  15 of 31 START test not_null_stg_online_retail_stock_code ...................... [RUN]
+12:31:49  11 of 31 PASS not_null_stg_online_retail_invoice ............................... [PASS in 0.03s]
+12:31:49  12 of 31 PASS not_null_stg_online_retail_invoice_date .......................... [PASS in 0.04s]
+12:31:49  16 of 31 START test not_null_stg_non_product_lines_non_product_reason .......... [RUN]
+12:31:49  14 of 31 PASS not_null_stg_online_retail_quantity .............................. [PASS in 0.04s]
+12:31:49  15 of 31 PASS not_null_stg_online_retail_stock_code ............................ [PASS in 0.02s]
+12:31:49  16 of 31 PASS not_null_stg_non_product_lines_non_product_reason ................ [PASS in 0.01s]
+12:31:49  17 of 31 START sql view model main.int_customer_orders ......................... [RUN]
+12:31:49  17 of 31 OK created sql view model main.int_customer_orders .................... [OK in 0.01s]
+12:31:49  18 of 31 START sql incremental model main.mart_customer_features ............... [RUN]
+12:31:50  18 of 31 OK created sql incremental model main.mart_customer_features .......... [OK in 1.12s]
+12:31:50  22 of 31 START test not_null_mart_customer_features_frequency .................. [RUN]
+12:31:50  21 of 31 START test not_null_mart_customer_features_cutoff_date ................ [RUN]
+12:31:50  20 of 31 START test not_null_mart_customer_features_customer_id ................ [RUN]
+12:31:50  19 of 31 START test no_feature_leakage ......................................... [RUN]
+12:31:50  20 of 31 PASS not_null_mart_customer_features_customer_id ...................... [PASS in 0.06s]
+12:31:50  23 of 31 START test not_null_mart_customer_features_recency_days ............... [RUN]
+12:31:50  21 of 31 PASS not_null_mart_customer_features_cutoff_date ...................... [PASS in 0.06s]
+12:31:50  22 of 31 PASS not_null_mart_customer_features_frequency ........................ [PASS in 0.06s]
+12:31:50  24 of 31 START test revenue_reconciles ......................................... [RUN]
+12:31:50  23 of 31 PASS not_null_mart_customer_features_recency_days ..................... [PASS in 0.03s]
+12:31:51  19 of 31 PASS no_feature_leakage ............................................... [PASS in 0.95s]
+12:31:51  24 of 31 PASS revenue_reconciles ............................................... [PASS in 1.00s]
+12:31:51  25 of 31 START sql incremental model main.mart_churn_labels .................... [RUN]
+12:31:52  25 of 31 OK created sql incremental model main.mart_churn_labels ............... [OK in 0.83s]
+12:31:52  29 of 31 START test not_null_mart_churn_labels_customer_id ..................... [RUN]
+12:31:52  26 of 31 START test accepted_values_mart_churn_labels_churned__0__1 ............ [RUN]
+12:31:52  28 of 31 START test not_null_mart_churn_labels_churned ......................... [RUN]
+12:31:52  27 of 31 START test no_label_leakage ........................................... [RUN]
+12:31:52  29 of 31 PASS not_null_mart_churn_labels_customer_id ........................... [PASS in 0.03s]
+12:31:52  30 of 31 START test not_null_mart_churn_labels_cutoff_date ..................... [RUN]
+12:31:52  26 of 31 PASS accepted_values_mart_churn_labels_churned__0__1 .................. [PASS in 0.04s]
+12:31:52  28 of 31 PASS not_null_mart_churn_labels_churned ............................... [PASS in 0.03s]
+12:31:52  31 of 31 START test relationships_mart_churn_labels_customer_id__customer_id__ref_mart_customer_features_  [RUN]
+12:31:52  30 of 31 PASS not_null_mart_churn_labels_cutoff_date ........................... [PASS in 0.02s]
+12:31:52  31 of 31 PASS relationships_mart_churn_labels_customer_id__customer_id__ref_mart_customer_features_  [PASS in 0.02s]
+12:31:53  27 of 31 PASS no_label_leakage ................................................. [PASS in 0.80s]
+12:31:53
+12:31:53  Finished running 2 incremental models, 25 data tests, 4 view models in 0 hours 0 minutes and 5.68 seconds (5.68s).
+12:31:53
+12:31:53  Completed with 1 warning:
+12:31:53
+12:31:53  [WARNING]: in test unique_stg_online_retail_raw_row_key (models/staging/_staging_raw.yml)
+12:31:53  [WARNING]: Got 32907 results, configured to warn if != 0
+12:31:53
+12:31:53    compiled code at target/compiled/churn_clv_dbt/models/staging/_staging_raw.yml/unique_stg_online_retail_raw_row_key.sql
+12:31:53
+12:31:53  Done. PASS=30 WARN=1 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=31
+
+----------------------------------------------------------------------------------------------
+
+Third run, cutoff B (2011-09-01), to confirm incremental accumulation: TBD.

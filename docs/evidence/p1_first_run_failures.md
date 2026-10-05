@@ -30,14 +30,18 @@ built successfully (it did -- `stg_online_retail_raw` shows `OK created`). I did
 that when I set this test's severity and when I described what to expect. Recorded in BUGLOG.md
 entry 3.
 
-## Fix applied, and what's still pending
+## Fix applied, and confirmed
 
-`unique_stg_online_retail_raw_row_key` has been downgraded to `severity: warn` in
-`models/staging/_staging_raw.yml`, now, in response to this real documented failure, not
-pre-emptively. Still pending, real:
+`unique_stg_online_retail_raw_row_key` was downgraded to `severity: warn` in
+`models/staging/_staging_raw.yml`, in response to this real documented failure, not pre-emptively.
+Re-run for cutoff A on 2026-10-05 confirms the fix: `PASS=30 WARN=1 ERROR=0 SKIP=0 NO-OP=0
+REUSED=0 TOTAL=31`. The one WARN is the same 32,907-row duplicate finding, now non-blocking as
+intended. `mart_customer_features` and `mart_churn_labels` built, and `no_feature_leakage`,
+`no_label_leakage`, and `revenue_reconciles` all ran and PASSed against the real dataset for the
+first time. Full output in docs/evidence/p1_dbt_build.txt.
 
-- Re-run `dbt build` for cutoff A with the fix applied, to get the marts actually built and
-  `no_feature_leakage` / `no_label_leakage` / `revenue_reconciles` actually executed. TBD.
+Still pending, real:
+
 - `dbt build` for cutoff B (`make build-test` or the direct `dbt build --vars ...` command), to
   confirm both cutoffs accumulate in the same incremental table as designed. TBD.
 - The 32,907 vs 34,335 reconciliation above. TBD.
