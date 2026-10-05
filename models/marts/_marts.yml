@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: mart_customer_features
+    description: >
+      Customer-level features as of a given cutoff_date. Incremental,
+      accumulates one row per (customer_id, cutoff_date) across separate
+      dbt build runs with different --vars cutoff_date.
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: cutoff_date
+        tests: [not_null]
+      - name: recency_days
+        tests: [not_null]
+      - name: frequency
+        tests: [not_null]
+
+  - name: mart_churn_labels
+    description: >
+      Churn label (1 = churned) as of a given cutoff_date, for the same
+      population as mart_customer_features for that cutoff.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mart_customer_features')
+              field: customer_id
+      - name: cutoff_date
+        tests: [not_null]
+      - name: churned
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
