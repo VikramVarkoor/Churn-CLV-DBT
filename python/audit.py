@@ -230,6 +230,23 @@ def main():
     log(lines, f"Rows with Price < 0: {price_neg:,}")
     log(lines, f"Rows with Quantity < 0 on a non-cancellation invoice (Invoice doesn't start with 'C'): {neg_qty_noncancel:,}")
 
+    log(lines, "\n--- Are the non-cancellation negative-quantity rows real customer activity, or write-offs? ---")
+    neg_qty_priced = con.sql(
+        "SELECT COUNT(*) FROM retail WHERE Quantity < 0 AND Invoice NOT LIKE 'C%' AND Price > 0"
+    ).fetchone()[0]
+    neg_qty_with_customer = con.sql(
+        "SELECT COUNT(*) FROM retail WHERE Quantity < 0 AND Invoice NOT LIKE 'C%' AND CustomerID IS NOT NULL"
+    ).fetchone()[0]
+    log(lines, f"Of those {neg_qty_noncancel:,} rows: with Price > 0 (an actual priced item, not a write-off): {neg_qty_priced:,}")
+    log(lines, f"Of those {neg_qty_noncancel:,} rows: with a non-null CustomerID (tied to a real customer): {neg_qty_with_customer:,}")
+    if neg_qty_priced > 0:
+        log(lines, "\nSample of up to 10 priced negative-quantity non-cancellation rows (these would need a real decision, not a blanket Price<=0 exclusion):")
+        priced_sample = con.sql(
+            "SELECT Invoice, StockCode, Description, Quantity, Price, CustomerID FROM retail "
+            "WHERE Quantity < 0 AND Invoice NOT LIKE 'C%' AND Price > 0 LIMIT 10"
+        ).fetchdf()
+        log(lines, priced_sample.to_string(index=False))
+
     customer_qty = con.sql(
         "SELECT CustomerID, SUM(Quantity) AS total_qty, COUNT(DISTINCT Invoice) AS n_invoices "
         "FROM retail WHERE Invoice NOT LIKE 'C%' AND CustomerID IS NOT NULL "
