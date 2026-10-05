@@ -198,6 +198,38 @@ def main():
     log(lines, "\nOrder value distribution (per invoice, purchases only):")
     log(lines, basket_stats["total_value"].describe(percentiles=[0.5, 0.9, 0.95, 0.99]).to_string())
 
+    log(lines, "\n--- Anomaly check: non-cancellation invoices that still net negative ---")
+    neg_qty_invoices = basket_stats[basket_stats["total_qty"] < 0]
+    neg_val_invoices = basket_stats[basket_stats["total_value"] < 0]
+    log(lines, f"Non-cancellation invoices with negative total quantity: {len(neg_qty_invoices):,} "
+               f"(out of {len(basket_stats):,} non-cancellation invoices)")
+    log(lines, f"Non-cancellation invoices with negative total value: {len(neg_val_invoices):,}")
+    if len(neg_qty_invoices) > 0:
+        log(lines, "\nSample of up to 10 such invoices (Invoice, total_qty, total_value):")
+        sample = neg_qty_invoices.sort_values("total_qty").head(10)
+        log(lines, sample.to_string(index=False))
+        log(lines, "\nLine-item detail for the single worst one (most negative quantity):")
+        worst_invoice = sample.iloc[0]["Invoice"]
+        detail = con.sql(
+            f"SELECT Invoice, StockCode, Description, Quantity, Price, CustomerID "
+            f"FROM retail WHERE Invoice = '{worst_invoice}' ORDER BY Quantity"
+        ).fetchdf()
+        log(lines, detail.to_string(index=False))
+
+    log(lines, "\n--- Quantity/Price breakdown (non-positive split into zero vs negative) ---")
+    qty_zero = con.sql("SELECT COUNT(*) FROM retail WHERE Quantity = 0").fetchone()[0]
+    qty_neg = con.sql("SELECT COUNT(*) FROM retail WHERE Quantity < 0").fetchone()[0]
+    price_zero = con.sql("SELECT COUNT(*) FROM retail WHERE Price = 0").fetchone()[0]
+    price_neg = con.sql("SELECT COUNT(*) FROM retail WHERE Price < 0").fetchone()[0]
+    neg_qty_noncancel = con.sql(
+        "SELECT COUNT(*) FROM retail WHERE Quantity < 0 AND Invoice NOT LIKE 'C%'"
+    ).fetchone()[0]
+    log(lines, f"Rows with Quantity = 0: {qty_zero:,}")
+    log(lines, f"Rows with Quantity < 0: {qty_neg:,}")
+    log(lines, f"Rows with Price = 0: {price_zero:,}")
+    log(lines, f"Rows with Price < 0: {price_neg:,}")
+    log(lines, f"Rows with Quantity < 0 on a non-cancellation invoice (Invoice doesn't start with 'C'): {neg_qty_noncancel:,}")
+
     customer_qty = con.sql(
         "SELECT CustomerID, SUM(Quantity) AS total_qty, COUNT(DISTINCT Invoice) AS n_invoices "
         "FROM retail WHERE Invoice NOT LIKE 'C%' AND CustomerID IS NOT NULL "
