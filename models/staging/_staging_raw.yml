@@ -12,7 +12,9 @@ models:
       - name: row_key
         description: md5 hash of all 8 raw columns, used to test for exact duplicates.
         tests:
-          - unique
+          - unique:
+              config:
+                severity: warn
           - not_null
       - name: invoice
         tests:

@@ -1,10 +1,86 @@
-TBD.
+Real output of `dbt build --profiles-dir . --vars '{cutoff_date: "2011-03-01"}'`, run by
+Vikram on his Mac against the real dataset (python/audit.py had already produced
+data/raw/online_retail_ii_combined.parquet from the real xlsx). Pasted verbatim, 2026-10-05.
 
-This file must hold the real output of `dbt build --profiles-dir .` run on Vikram's machine
-against the real dataset (python/audit.py already produces data/raw/online_retail_ii_combined.parquet
-from the real xlsx). Per the project's ground rules, no invented numbers: this stays TBD until
-that real run happens and its output is pasted in here.
+This is the FIRST run, before the unique_stg_online_retail_raw_row_key test's severity was
+downgraded to warn (see BUGLOG.md entry 3). It shows the real duplicate count (32,907) and the
+real consequence of leaving that test at error severity in `dbt build`: everything downstream of
+stg_online_retail_raw was skipped, so the marts were NOT built on this run. A second run, after
+the severity fix, is needed to get real mart/leakage-test evidence -- see
+docs/evidence/p1_first_run_failures.md for what's still pending.
 
-See docs/evidence/p1_sandbox_test_log.txt for the sandbox's own verification run against a small
-synthetic fixture (used only to confirm the project is mechanically correct before shipping it;
-not a substitute for this file).
+----------------------------------------------------------------------------------------------
+
+12:26:57  Running with dbt=1.12.5
+12:26:57  Registered adapter: duckdb=1.11.0
+12:26:57  Unable to do partial parsing because saved manifest not found. Starting full parse.
+12:26:58  [WARNING][MissingArgumentsPropertyInGenericTestDeprecation]: Deprecated
+functionality
+Found top-level arguments to test `relationships` defined on 'mart_churn_labels'
+in package 'churn_clv_dbt' (models/marts/_marts.yml). Arguments to generic tests
+should be nested under the `arguments` property.
+12:26:59  Found 6 models, 25 data tests, 500 macros
+12:26:59
+12:26:59  Concurrency: 4 threads (target='dev')
+12:26:59
+12:26:59  1 of 31 START sql view model main.stg_online_retail_raw ........................ [RUN]
+12:26:59  1 of 31 OK created sql view model main.stg_online_retail_raw ................... [OK in 0.05s]
+12:26:59  5 of 31 START test not_null_stg_online_retail_raw_quantity ..................... [RUN]
+12:26:59  3 of 31 START test not_null_stg_online_retail_raw_invoice_date ................. [RUN]
+12:26:59  4 of 31 START test not_null_stg_online_retail_raw_price ........................ [RUN]
+12:26:59  2 of 31 START test not_null_stg_online_retail_raw_invoice ...................... [RUN]
+12:26:59  3 of 31 PASS not_null_stg_online_retail_raw_invoice_date ....................... [PASS in 0.05s]
+12:26:59  5 of 31 PASS not_null_stg_online_retail_raw_quantity ........................... [PASS in 0.06s]
+12:26:59  4 of 31 PASS not_null_stg_online_retail_raw_price .............................. [PASS in 0.05s]
+12:26:59  2 of 31 PASS not_null_stg_online_retail_raw_invoice ............................ [PASS in 0.05s]
+12:26:59  7 of 31 START test not_null_stg_online_retail_raw_stock_code ................... [RUN]
+12:26:59  6 of 31 START test not_null_stg_online_retail_raw_row_key ...................... [RUN]
+12:26:59  8 of 31 START test unique_stg_online_retail_raw_row_key ........................ [RUN]
+12:26:59  7 of 31 PASS not_null_stg_online_retail_raw_stock_code ......................... [PASS in 0.02s]
+12:27:00  6 of 31 PASS not_null_stg_online_retail_raw_row_key ............................ [PASS in 0.77s]
+12:27:00  8 of 31 FAIL 32907 unique_stg_online_retail_raw_row_key ........................ [FAIL 32907 in 1.45s]
+12:27:00  9 of 31 SKIP relation main.stg_non_product_lines ............................... [SKIP]
+12:27:00  11 of 31 SKIP test not_null_stg_non_product_lines_non_product_reason ........... [SKIP]
+12:27:00  10 of 31 SKIP relation main.stg_online_retail .................................. [SKIP]
+12:27:00  15 of 31 SKIP test not_null_stg_online_retail_quantity ......................... [SKIP]
+12:27:00  12 of 31 SKIP test not_null_stg_online_retail_invoice .......................... [SKIP]
+12:27:00  16 of 31 SKIP test not_null_stg_online_retail_stock_code ....................... [SKIP]
+12:27:00  13 of 31 SKIP test not_null_stg_online_retail_invoice_date ..................... [SKIP]
+12:27:00  14 of 31 SKIP test not_null_stg_online_retail_price ............................ [SKIP]
+12:27:00  17 of 31 SKIP relation main.int_customer_orders ................................ [SKIP]
+12:27:00  18 of 31 SKIP relation main.mart_customer_features ............................. [SKIP]
+12:27:00  20 of 31 SKIP test not_null_mart_customer_features_customer_id ................. [SKIP]
+12:27:00  23 of 31 SKIP test not_null_mart_customer_features_recency_days ................ [SKIP]
+12:27:00  22 of 31 SKIP test not_null_mart_customer_features_frequency ................... [SKIP]
+12:27:00  21 of 31 SKIP test not_null_mart_customer_features_cutoff_date ................. [SKIP]
+12:27:00  19 of 31 SKIP test no_feature_leakage .......................................... [SKIP]
+12:27:00  24 of 31 SKIP test revenue_reconciles .......................................... [SKIP]
+12:27:00  25 of 31 SKIP relation main.mart_churn_labels .................................. [SKIP]
+12:27:00  26 of 31 SKIP test accepted_values_mart_churn_labels_churned__0__1 ............. [SKIP]
+12:27:00  30 of 31 SKIP test not_null_mart_churn_labels_cutoff_date ...................... [SKIP]
+12:27:00  29 of 31 SKIP test not_null_mart_churn_labels_customer_id ...................... [SKIP]
+12:27:00  27 of 31 SKIP test no_label_leakage ............................................ [SKIP]
+12:27:00  28 of 31 SKIP test not_null_mart_churn_labels_churned .......................... [SKIP]
+12:27:00  31 of 31 SKIP test relationships_mart_churn_labels_customer_id__customer_id__ref_mart_customer_features_  [SKIP]
+12:27:00
+12:27:00  Finished running 2 incremental models, 25 data tests, 4 view models in 0 hours 0 minutes and 1.69 seconds (1.69s).
+12:27:00
+12:27:00  Completed with 1 error, 0 partial successes, and 0 warnings:
+12:27:00
+12:27:00  [ERROR]: in test unique_stg_online_retail_raw_row_key (models/staging/_staging_raw.yml)
+12:27:00    Got 32907 results, configured to fail if != 0
+12:27:00
+12:27:00    compiled code at target/compiled/churn_clv_dbt/models/staging/_staging_raw.yml/unique_stg_online_retail_raw_row_key.sql
+12:27:00
+12:27:00  Done. PASS=7 WARN=0 ERROR=1 SKIP=23 NO-OP=0 REUSED=0 TOTAL=31
+12:27:00  [WARNING][DeprecationsSummary]: Deprecated functionality
+Summary of encountered deprecations:
+- MissingArgumentsPropertyInGenericTestDeprecation: 2 occurrences
+To see all deprecation instances instead of just the first occurrence of each,
+run command again with the `--show-all-deprecations` flag. You may also need to
+run with `--no-partial-parse` as some deprecations are only encountered during
+parsing.
+
+----------------------------------------------------------------------------------------------
+
+Second run (after severity fix, both cutoffs): TBD.

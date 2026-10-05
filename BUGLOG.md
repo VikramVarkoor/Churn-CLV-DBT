@@ -45,21 +45,42 @@ used in SQL. Caught before this was ever shipped or run against real data, by te
 project end to end against a synthetic fixture (including hand-computed expected values per
 customer) before sending it to Vikram.
 
-## 3. [TBD] Real duplicate-row count from stg_online_retail_raw's first real run
+## 3. Real duplicate-row count from stg_online_retail_raw's first real run, and a wrong claim about what "downstream still passes" meant
 
-**Symptom:** `tests/stg_online_retail_raw.yml`'s `unique` test on `row_key` is expected to fail
-the first time `dbt build` runs against the real dataset, per docs/audit.md section 4 (34,335
-exact-duplicate rows found in the raw file during the Phase 0 audit).
+**Symptom:** `tests/_staging_raw.yml`'s `unique` test on `row_key` failed on the first real
+`dbt build` against the real dataset, as expected: `Got 32907 results, configured to fail if != 0`.
+That number is close to but not identical to the 34,335 exact-duplicate rows found by the Phase 0
+pandas audit (docs/audit.md section 4) -- not yet reconciled, see "Open question" below.
 
-**How found:** TBD -- waiting on Vikram's first real `dbt build` run. The severity on this test is
-intentionally left at the default (error) for that first run so the failure is real and visible,
-not pre-suppressed.
+What was NOT expected: `dbt build` SKIPPED every downstream node (stg_online_retail,
+stg_non_product_lines, int_customer_orders, both marts, and all 23 remaining data tests -- 23 of
+31 total nodes). I had told Vikram beforehand "everything downstream should still build and pass."
+That was wrong. `dbt build` treats a failing test at default (error) severity as blocking: any
+node downstream of the tested resource is skipped, not just the test itself. Running this test at
+error severity on the raw layer, as originally designed, made the first real run structurally
+unable to reach Phase 1's actual acceptance criteria (marts built, leakage tests passing for both
+cutoffs), since nothing past the raw layer ran at all.
 
-**Root cause:** Real export/logging duplication in the source file, already identified and the
-exclusion rule already designed and implemented (`stg_online_retail.sql` deduplicates on this
-same key). This entry exists to record the real failure count from the real run, then the test's
-severity gets downgraded to `warn` in a follow-up commit, since the issue is already understood
-and already handled downstream.
+**How found:** Vikram's first real `dbt build --vars '{cutoff_date: "2011-03-01"}'` run against
+the real dataset. Full output is in docs/evidence/p1_dbt_build.txt.
 
-**Fix:** Pending the real run. Will be filled in with the actual row count dbt reports, not
-estimated.
+**Root cause (duplicate rows):** Real export/logging duplication in the source file, already
+identified in Phase 0 and the exclusion rule already implemented (`stg_online_retail.sql`
+deduplicates on this same `row_key`). **Root cause (skip cascade):** my own incorrect assumption
+about `dbt build` semantics when I planned the test's severity and told Vikram what to expect --
+I did not account for its default fail-blocks-downstream behavior for `build` (as opposed to
+`dbt test`, which does not block anything since nothing runs after it).
+
+**Fix:** Downgraded `unique_stg_online_retail_raw_row_key` to `severity: warn` in
+`models/staging/_staging_raw.yml`, immediately after this first real run, not in a later follow-up
+as originally planned -- the pipeline cannot reach Phase 1's acceptance criteria otherwise. The
+real failure count (32,907) is recorded here and in docs/evidence/ before the severity change, so
+the downgrade is documented as a response to a real, witnessed failure, not a pre-suppression.
+Vikram needs to re-run `dbt build` for cutoff A after pulling this fix to get the actual marts
+built and the leakage/reconciliation tests actually executed.
+
+**Open question, not yet resolved:** 32,907 (dbt's `unique` test, counting rows beyond the first
+per duplicate `row_key` group) vs 34,335 (Phase 0 pandas `duplicated()` count) are measuring
+slightly different things and are not expected to match exactly, but the gap hasn't been checked
+line-by-line yet. To close this out: confirm whether pandas' duplicate check was keyed on the same
+8 columns as `row_key`'s md5, or on a different column set.
