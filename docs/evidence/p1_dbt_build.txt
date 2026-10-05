@@ -260,6 +260,49 @@ should be nested under the `arguments` property.
 
 ----------------------------------------------------------------------------------------------
 
-Still needed to close Phase 1: a direct query confirming mart_customer_features and
-mart_churn_labels actually hold rows for BOTH cutoff_date values (2011-03-01 and 2011-09-01)
-together, not just the most recent one -- see docs/evidence/p1_first_run_failures.md. TBD.
+Incremental-accumulation check, both cutoffs persisted together in the same tables (2026-10-05):
+
+>>> python3 -c "
+... import duckdb
+... con = duckdb.connect('data/warehouse.duckdb')
+... print('mart_customer_features:')
+... print(con.execute('select cutoff_date, count(*) from mart_customer_features group by 1 order by 1').fetchall())
+... print('mart_churn_labels:')
+... print(con.execute('select cutoff_date, count(*) from mart_churn_labels group by 1 order by 1').fetchall())
+... "
+mart_customer_features:
+[(datetime.datetime(2011, 3, 1, 0, 0), 4512), (datetime.datetime(2011, 9, 1, 0, 0), 5224)]
+mart_churn_labels:
+[(datetime.datetime(2011, 3, 1, 0, 0), 4512), (datetime.datetime(2011, 9, 1, 0, 0), 5224)]
+
+Both cutoffs present with distinct, nonzero, matching-across-marts counts. Population grows from
+4,512 (March) to 5,224 (September) as expected -- more history accumulated by the later cutoff.
+delete+insert on unique_key=['customer_id', 'cutoff_date'] is working as designed, not silently
+overwriting one cutoff with the other.
+
+----------------------------------------------------------------------------------------------
+
+32,907 vs 34,335 reconciliation (2026-10-05):
+
+>>> python3 -c "
+... import duckdb
+... con = duckdb.connect('data/warehouse.duckdb')
+... print(con.execute('''
+...     with dupes as (
+...         select row_key, count(*) as n
+...         from stg_online_retail_raw
+...         group by row_key
+...         having count(*) > 1
+...     )
+...     select count(*) as duplicate_groups, sum(n - 1) as excess_rows
+...     from dupes
+... ''').fetchall())
+... "
+[(32907, 34335)]
+
+Exact match: 32,907 distinct duplicated row_key groups (what dbt's unique test counts), 34,335
+total excess rows summed across those groups (what the Phase 0 pandas audit counted). No
+remaining discrepancy -- see BUGLOG.md entry 3.
+
+Phase 1 acceptance criteria met as of this point. See docs/evidence/p1_first_run_failures.md
+for the closing status summary.

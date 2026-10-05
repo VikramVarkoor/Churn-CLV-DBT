@@ -43,9 +43,22 @@ first time. Full output in docs/evidence/p1_dbt_build.txt.
 Cutoff B (2011-09-01) re-run on 2026-10-05: identical shape, `PASS=30 WARN=1 ERROR=0 SKIP=0
 NO-OP=0 REUSED=0 TOTAL=31`. Full output in docs/evidence/p1_dbt_build.txt.
 
-Still pending, real:
+A direct query confirmed both cutoffs persist together, not overwritten:
+`mart_customer_features` and `mart_churn_labels` each hold 4,512 rows at `cutoff_date =
+2011-03-01` and 5,224 rows at `cutoff_date = 2011-09-01` (query and full counts in
+docs/evidence/p1_dbt_build.txt). The customer count growing from A to B is expected -- more
+purchase history has accumulated by September than by March.
 
-- A direct query confirming `mart_customer_features` and `mart_churn_labels` hold rows for BOTH
-  `cutoff_date` values together (not just the most recent one, which incremental delete+insert
-  could silently get wrong if the unique_key were mis-set). TBD.
-- The 32,907 vs 34,335 reconciliation above. TBD.
+The 32,907 vs 34,335 gap is also resolved, with a query, not left open: 32,907 is the number of
+distinct duplicated `row_key` groups; 34,335 is the total excess-row count across those groups
+(some groups have 3+ copies, not just 2). Confirmed exactly against the real warehouse. See
+BUGLOG.md entry 3 for the query and result.
+
+## Status: Phase 1 acceptance criteria met
+
+- Same SQL, two `--vars` runs, both cutoffs' rows coexist in the incremental marts: confirmed.
+- `no_feature_leakage`, `no_label_leakage`, `revenue_reconciles` all pass against real data for
+  both cutoffs: confirmed.
+- The one real, documented failure (raw duplicate rows) is recorded with its real count before its
+  severity was changed, not pre-suppressed: confirmed.
+- All real numbers here came from Vikram's own runs on his machine, not invented or estimated.

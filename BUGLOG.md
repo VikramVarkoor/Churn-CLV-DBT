@@ -79,8 +79,17 @@ the downgrade is documented as a response to a real, witnessed failure, not a pr
 Vikram needs to re-run `dbt build` for cutoff A after pulling this fix to get the actual marts
 built and the leakage/reconciliation tests actually executed.
 
-**Open question, not yet resolved:** 32,907 (dbt's `unique` test, counting rows beyond the first
-per duplicate `row_key` group) vs 34,335 (Phase 0 pandas `duplicated()` count) are measuring
-slightly different things and are not expected to match exactly, but the gap hasn't been checked
-line-by-line yet. To close this out: confirm whether pandas' duplicate check was keyed on the same
-8 columns as `row_key`'s md5, or on a different column set.
+**Reconciled, confirmed with a query, not assumed:** 32,907 vs 34,335 are both correct, measuring
+different things on the same duplicate rows. dbt's `unique` test counts distinct `row_key` values
+that have more than one row (one result row per duplicated group) -- 32,907 groups. The Phase 0
+audit's `COUNT(*) - COUNT(DISTINCT ...)` counts total excess rows (sum of `count - 1` across every
+group) -- 34,335. They only diverge because some duplicate groups have 3+ copies, not just 2.
+Confirmed directly against the real warehouse:
+```sql
+with dupes as (
+    select row_key, count(*) as n from stg_online_retail_raw group by row_key having count(*) > 1
+)
+select count(*) as duplicate_groups, sum(n - 1) as excess_rows from dupes
+-- (32907, 34335)
+```
+Exact match on both numbers. No remaining discrepancy.
