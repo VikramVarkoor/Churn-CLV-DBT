@@ -10,3 +10,4 @@ scipy
 pytest
 tabulate
 pymc-marketing
+groq

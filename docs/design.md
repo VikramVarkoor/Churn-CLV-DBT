@@ -282,3 +282,18 @@ model is.
   only if none of these three checks fire. The verifier is tested against deliberately broken
   fixtures before being trusted on real output, same discipline as the dbt/pytest leakage
   checks in Phases 1-3.
+
+**Implementation, built and sandbox-tested (see docs/evidence/p4_sandbox_test_log.txt):**
+`python/llm/prompts.py` (build_prompt, the shared CAUSAL_MARKERS list), `python/llm/client.py`
+(LLMOutput, LLMClient, StubClient, GroqClient), `python/llm/verify.py` (extract_numbers,
+allowed_numbers, the three check functions, verify_summary), and `python/run_phase4.py` (the
+--stub-flagged orchestration script, writing `docs/evidence/p4_llm_summaries.md` and
+`docs/evidence/p4_llm_raw.json`). Two judgment calls made during implementation, not spelled
+out above, and documented in `python/llm/verify.py`'s own docstring: a proportion-shaped field
+(share_of_customers, share_of_revenue, predicted_churn_rate) is matched against both its raw
+value and its x100 percentage form, since a marketing-facing summary will very likely write
+"15.3%" rather than "0.153"; and digit runs embedded in field names themselves (the "245" in
+`predicted_clv_245d`) are added to the allowed-number set, since that is the only place the
+245-day horizon is ever given to the model. `tests/test_phase4_llm_client.py` and
+`tests/test_phase4_verify.py` cover this, including one deliberately broken fixture per
+check.
