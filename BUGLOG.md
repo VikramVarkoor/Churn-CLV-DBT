@@ -168,3 +168,32 @@ tuning trials, the PR-AUC/ROC-AUC/lift/capture/Brier results table, both calibra
 the success-criterion check) is byte-identical to the pre-fix real run, confirming the bug was
 isolated to the threshold-based operating point exactly as predicted -- the ranking metrics never
 used the threshold. Real, final output is in `docs/evidence/p2_results.md`.
+
+## 6. pymc-marketing's `GammaGammaModel.expected_new_customer_spend()` returned a negative
+   value on real-shaped data
+
+**Symptom:** While sandbox-testing Phase 3's CLV code against the synthetic fixture, the
+planned fallback for predicting monetary value for frequency_repeat=0 (single-purchase)
+customers -- `GammaGammaModel.expected_new_customer_spend()`, the library's own "population
+average for an unseen customer" method -- returned a negative posterior mean (-3050.94) on a
+small repeat-customer population (224 customers) where frequency and monetary_value are
+correlated (0.57, see docs/design.md and p3_clv_validation.md). A negative predicted average
+transaction value is nonsensical.
+
+**How found:** A smoke test run directly in the sandbox before writing it into
+`python/clv/model.py`, specifically because the Gamma-Gamma assumption (frequency and
+monetary_value uncorrelated) looked likely to be violated on this dataset and I wanted to check
+the fallback path before trusting it, not after.
+
+**Root cause:** Not confirmed from the library's source in detail, but consistent with
+Gamma-Gamma's own math: `expected_new_customer_spend()` extrapolates from the fitted p/q/v
+parameters to a customer with no observed repeat purchases at all, and that extrapolation is
+not guaranteed to stay positive when the fitted parameters are already a poor fit to the data
+(which a strong assumption violation would cause).
+
+**Fix:** Don't use that method. `python/clv/model.py`'s `fit_gamma_gamma()` instead returns the
+plain empirical mean of `monetary_value` over the repeat customers actually used to fit the
+model, and `predict_clv()` uses that empirical mean as the monetary-value plug-in for
+frequency_repeat=0 customers, documented inline in the code rather than silently swapped. This
+is a simpler, always-positive estimate, at the cost of not being a model-based prediction for
+that subgroup -- an honest tradeoff, not a hidden one.

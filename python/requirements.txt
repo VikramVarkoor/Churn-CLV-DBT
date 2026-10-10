@@ -8,3 +8,5 @@ scikit-learn
 lightgbm
 scipy
 pytest
+tabulate
+pymc-marketing

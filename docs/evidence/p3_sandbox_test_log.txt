@@ -1,0 +1,140 @@
+=== Phase 3 sandbox verification log (synthetic fixture, NOT real evidence) ===
+Generated: 2026-10-10 by the build sandbox, against the synthetic fixture generated
+for Phase 2 (400 customers, 5 archetypes, same real date range). This confirms the Phase 3
+code -- RFM quintiles, k-means with silhouette/bootstrap-ARI, mart_clv_features/
+mart_clv_holdout_actuals dbt models, BG/NBD + Gamma-Gamma fitting via pymc-marketing, and
+the pytest leakage checks -- is mechanically correct before shipping it. NOT a substitute
+for docs/evidence/p3_segments.md or p3_clv_validation.md, which must hold Vikram's real run.
+
+--- dbt build, all three cutoffs (validation, A, B), PASS=45 each including the new
+    no_clv_feature_leakage and no_clv_holdout_leakage singular tests ---
+
+--- python3 python/run_phase3_segments.py output ---
+# Phase 3 segmentation results
+
+Generated: 2026-10-10
+
+Snapshot cutoff: 2011-09-01 (mart_customer_features). 4 of 400 customers are flagged wholesalers under the design.md rule (0.010 of the population).
+
+## Wholesaler comparison
+
+With wholesalers: chosen k=3, silhouette=0.416, stability mean ARI=0.722.
+Without wholesalers: chosen k=4, silhouette=0.383, stability mean ARI=0.858.
+
+### All customers
+
+n_customers=400, monetary_net values clipped to 0 before log transform: 0.
+RFM quintile bins actually used (5 = no ties collapsed any bin edge): recency=5, frequency=5, monetary=5.
+
+K-means model selection (k=3..8, by silhouette score):
+
+| k | silhouette | min cluster share | cluster sizes |
+|---|---|---|---|
+| 3 | 0.416 | 0.052 | {0: 139, 1: 240, 2: 21} |
+| 4 | 0.385 | 0.052 | {0: 107, 1: 173, 2: 21, 3: 99} |
+| 5 | 0.351 | 0.052 | {0: 93, 1: 101, 2: 21, 3: 62, 4: 123} |
+| 6 | 0.373 | 0.052 | {0: 81, 1: 91, 2: 80, 3: 78, 4: 21, 5: 49} |
+| 7 | 0.374 | 0.052 | {0: 76, 1: 21, 2: 49, 3: 24, 4: 76, 5: 81, 6: 73} |
+| 8 | 0.377 | 0.050 | {0: 20, 1: 81, 2: 76, 3: 45, 4: 43, 5: 21, 6: 67, 7: 47} |
+
+Chosen k = 3 (highest silhouette, 0.416).
+Bootstrap-ARI stability (n_boot=200): mean=0.722, 95% interval [0.376, 1.000].
+
+Segment profile (sorted by mean monetary_net, highest first; segment IDs are arbitrary k-means labels, not ranked names):
+
+|   segment |   n_customers |   mean_recency_days |   mean_frequency |   mean_monetary_net |   total_monetary_net |   share_wholesaler |   share_of_customers |   share_of_revenue |
+|----------:|--------------:|--------------------:|-----------------:|--------------------:|---------------------:|-------------------:|---------------------:|-------------------:|
+|         2 |            21 |              34.952 |           38.333 |           265915    |          5.58421e+06 |               0.19 |                0.052 |              0.812 |
+|         1 |           240 |              93.25  |            7.175 |             4739.34 |          1.13744e+06 |               0    |                0.6   |              0.165 |
+|         0 |           139 |             280.331 |            1.942 |             1106.6  |     153817           |               0    |                0.348 |              0.022 |
+
+### Excluding flagged wholesalers
+
+n_customers=396, monetary_net values clipped to 0 before log transform: 0.
+RFM quintile bins actually used (5 = no ties collapsed any bin edge): recency=5, frequency=5, monetary=5.
+
+K-means model selection (k=3..8, by silhouette score):
+
+| k | silhouette | min cluster share | cluster sizes |
+|---|---|---|---|
+| 3 | 0.373 | 0.217 | {0: 201, 1: 109, 2: 86} |
+| 4 | 0.383 | 0.043 | {0: 105, 1: 17, 2: 102, 3: 172} |
+| 5 | 0.353 | 0.043 | {0: 100, 1: 95, 2: 17, 3: 124, 4: 60} |
+| 6 | 0.371 | 0.043 | {0: 49, 1: 78, 2: 81, 3: 92, 4: 17, 5: 79} |
+| 7 | 0.373 | 0.043 | {0: 80, 1: 73, 2: 24, 3: 17, 4: 77, 5: 76, 6: 49} |
+| 8 | 0.373 | 0.043 | {0: 42, 1: 50, 2: 75, 3: 72, 4: 17, 5: 19, 6: 49, 7: 72} |
+
+Chosen k = 4 (highest silhouette, 0.383).
+Bootstrap-ARI stability (n_boot=200): mean=0.858, 95% interval [0.648, 0.992].
+
+Segment profile (sorted by mean monetary_net, highest first; segment IDs are arbitrary k-means labels, not ranked names):
+
+|   segment |   n_customers |   mean_recency_days |   mean_frequency |   mean_monetary_net |   total_monetary_net |   share_wholesaler |   share_of_customers |   share_of_revenue |
+|----------:|--------------:|--------------------:|-----------------:|--------------------:|---------------------:|-------------------:|---------------------:|-------------------:|
+|         1 |            17 |              35.235 |           32.471 |          227152     |          3.86159e+06 |                  0 |                0.043 |              0.749 |
+|         2 |           102 |              20.451 |            7.912 |            5207.18  |     531132           |                  0 |                0.258 |              0.103 |
+|         3 |           172 |             176.855 |            6.07  |            3929.87  |     675937           |                  0 |                0.434 |              0.131 |
+|         0 |           105 |             274.676 |            1.343 |             801.808 |      84189.8         |                  0 |                0.265 |              0.016 |
+
+
+--- python3 python/run_phase3_clv.py output ---
+# Phase 3 CLV validation
+
+Generated: 2026-10-10
+
+Calibration cutoff: 2011-03-01. Holdout window: 245 days (evaluated once, below, never used during fitting).
+
+n_customers=310, repeat customers (frequency_repeat >= 1) used to fit Gamma-Gamma: n_repeat=224.
+
+## Gamma-Gamma assumption check
+
+Gamma-Gamma assumes frequency and mean order value are uncorrelated among repeat customers. Checked, not assumed: Pearson correlation between frequency_repeat and monetary_value over the 224 repeat customers in the calibration population is 0.570.
+This is a real, non-trivial correlation, not close to zero -- the Gamma-Gamma assumption is violated on this population. The monetary predictions below are reported anyway, per the brief's instruction to report what is found, but this is a real limitation of the model on this dataset, not a detail to gloss over.
+
+## Holdout validation (never used in fitting)
+
+Transaction count MAE: 2.566. Spend MAE: 6094.47.
+Spearman rank correlation, predicted vs actual transactions: 0.455 (p=0.0000).
+Spearman rank correlation, predicted vs actual spend (the CLV figure): 0.428 (p=0.0000).
+
+### Predicted vs actual transactions, by decile of predicted transactions
+
+|   decile |   n |   mean_predicted |   mean_actual |
+|---------:|----:|-----------------:|--------------:|
+|        1 |  31 |            0.135 |         1.613 |
+|        2 |  31 |            0.43  |         1.387 |
+|        3 |  31 |            0.742 |         0.806 |
+|        4 |  31 |            1.148 |         1.581 |
+|        5 |  31 |            1.656 |         2.29  |
+|        6 |  31 |            2.264 |         3.484 |
+|        7 |  31 |            2.962 |         3.968 |
+|        8 |  31 |            3.71  |         3.774 |
+|        9 |  31 |            4.791 |         3.29  |
+|       10 |  31 |           12.234 |        13.129 |
+
+### Predicted vs actual spend, by decile of predicted spend
+
+|   decile |   n |   mean_predicted |   mean_actual |
+|---------:|----:|-----------------:|--------------:|
+|        1 |  31 |            63.68 |        976.1  |
+|        2 |  31 |           326.14 |       1122.17 |
+|        3 |  31 |           616.17 |        443.33 |
+|        4 |  31 |           870.27 |       1325.2  |
+|        5 |  31 |          1231.26 |       1444.97 |
+|        6 |  31 |          1639.61 |       2304.59 |
+|        7 |  31 |          2191.42 |       2298.14 |
+|        8 |  31 |          2957.54 |       2127.85 |
+|        9 |  31 |          4116.06 |       2092.51 |
+|       10 |  31 |         63995.7  |      86501.4  |
+
+
+--- Leak-plant/revert demonstration (mart_clv_features.sql, same discipline as Phase 2) ---
+Changed the history CTE's `invoice_date < cutoff` to `invoice_date <= cutoff` (an off-by-one
+leak: lets same-day-as-cutoff orders into the calibration features), rebuilt all three cutoffs
+with --full-refresh, and confirmed both independent checks caught it:
+  - dbt singular test `no_clv_feature_leakage`: "Got 5 results, configured to fail if != 0"
+  - pytest `test_clv_features_match_independent_recomputation`: AssertionError, 5 mismatched
+    rows at cutoff=2011-09-01
+Reverted the SQL, rebuilt all three cutoffs with --full-refresh again, re-ran the full dbt
+build and pytest suite: PASS=45/45 for every cutoff, 9/9 pytest tests passing. Confirms the new
+leakage tests genuinely catch a real leak rather than passing trivially.

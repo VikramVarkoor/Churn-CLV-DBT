@@ -1,8 +1,10 @@
 # Customer Churn, Segmentation, and CLV on a dbt + DuckDB Warehouse
 
 Status: Phases 0-2 done (data audit, design lock, dbt + DuckDB warehouse, leakage-safe churn
-model with an out-of-time test). This README will be filled in properly during Phase 5 per the
-project plan; until then it just orients anyone opening the repo early.
+model with an out-of-time test). Phase 3 (segmentation and CLV) code is written and verified
+against a synthetic fixture in the build sandbox; real results are still TBD pending a real run
+(see docs/evidence/p3_segments.md, p3_clv_validation.md). This README will be filled in properly
+during Phase 5 per the project plan; until then it just orients anyone opening the repo early.
 
 ## Phase 2 headline result
 

@@ -34,3 +34,38 @@ models:
           - not_null
           - accepted_values:
               values: [0, 1]
+
+  - name: mart_clv_features
+    description: >
+      BG/NBD + Gamma-Gamma input features as of a given cutoff_date (Phase 3). A different
+      recency/frequency convention from mart_customer_features -- see docs/design.md.
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: cutoff_date
+        tests: [not_null]
+      - name: frequency_repeat
+        tests: [not_null]
+      - name: t_days
+        tests: [not_null]
+      - name: recency_cal_days
+        tests: [not_null]
+
+  - name: mart_clv_holdout_actuals
+    description: >
+      Real transaction count and spend in the fixed holdout window after a given cutoff_date,
+      for CLV validation only (never fed into fitting). Same population as mart_clv_features
+      for that cutoff.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('mart_clv_features')
+              field: customer_id
+      - name: cutoff_date
+        tests: [not_null]
+      - name: actual_transactions
+        tests: [not_null]
+      - name: actual_spend
+        tests: [not_null]

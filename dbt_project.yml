@@ -21,6 +21,10 @@ vars:
   cutoff_date: '2011-03-01'
   label_window_days: 90
   raw_parquet_path: 'data/raw/online_retail_ii_combined.parquet'
+  # Phase 3 CLV holdout window, fixed in docs/design.md's "Calibration cutoff and holdout
+  # window" section: 245 days after the CLV calibration cutoff (2011-03-01), checked there
+  # against the real last row with a 38-day margin.
+  clv_holdout_days: 245
 
 models:
   churn_clv_dbt:

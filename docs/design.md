@@ -160,7 +160,13 @@ model is.
   output) and k-means uses Euclidean distance, which is dominated by the raw monetary_net scale
   otherwise. k chosen from a grid (k=3..8) by silhouette score, then checked for interpretability
   (a k that produces a segment under 1% of customers is flagged, not automatically rejected --
-  small-but-real segments like wholesalers are a legitimate finding, not noise).
+  small-but-real segments like wholesalers are a legitimate finding, not noise). monetary_net
+  can in principle be <= 0 for a customer whose cancellations in the lookback window net against
+  (or exceed) their purchases -- not observed in the sandbox's synthetic fixture, but not
+  assumed impossible on the real data either, since log1p of a negative number below -1 is
+  undefined. Any such value is clipped to 0 before the log transform (clip count reported in
+  p3_segments.md, not silently applied) rather than dropping the customer or letting the
+  pipeline crash on real data.
 - **Stability:** bootstrap-ARI -- refit k-means on B bootstrap resamples (customers, with
   replacement) of the same population, compute the adjusted Rand index between each resample's
   labels and the full-population labels (restricted to the resample's own customers), report the
