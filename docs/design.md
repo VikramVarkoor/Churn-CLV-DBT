@@ -119,10 +119,13 @@ model is.
   hard yes/no. So `recency_days` itself is used directly as a continuous ranking score for the
   ranking metrics (directly comparable to the other two models on the same footing), and
   separately, a threshold X is tuned on the validation cutoff (grid search over observed
-  recency_days values, maximizing F1) to report an interpretable precision/recall/accuracy
-  operating point. Calibration is not reported for the recency rule -- a raw day count is not a
-  probability, and forcing one through an arbitrary transform just to fill in a number would be
-  exactly the kind of invented precision the brief's ground rules rule out.
+  recency_days values, maximizing Youden's J = TPR - FPR) to report an interpretable
+  precision/recall operating point. Originally this maximized F1 instead; changed after Vikram's
+  real first run showed F1-argmax collapsing to a near-trivial threshold (X=1 day) because the
+  real validation population turned out to be majority-churned (66.8%) under this label
+  definition -- see BUGLOG.md entry 5. Calibration is not reported for the recency rule -- a raw
+  day count is not a probability, and forcing one through an arbitrary transform just to fill in
+  a number would be exactly the kind of invented precision the brief's ground rules rule out.
 - **Logistic regression baseline features:** recency_days, frequency, monetary_net only (RFM,
   per the brief's own wording), standardized before fitting.
 - **Gradient boosting features:** the full mart_customer_features set (recency, frequency,

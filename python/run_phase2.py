@@ -60,7 +60,8 @@ def main() -> None:
     }
 
     # --- Baseline 1: recency rule ---
-    threshold, val_f1 = baselines.tune_recency_threshold(df_val)
+    tune_result_recency = baselines.tune_recency_threshold(df_val)
+    threshold = tune_result_recency["threshold"]
     recency_score_test = baselines.recency_score(df_test)
     recency_pred_test = baselines.recency_rule_predict(df_test, threshold)
     recency_eval = evaluate_scorer("recency_rule", df_test["churned"].to_numpy(), recency_score_test)
@@ -102,9 +103,13 @@ def main() -> None:
     lines.append("")
 
     lines.append("## Recency rule\n")
+    vstats = tune_result_recency["validation_stats"]
     lines.append(
-        f"Threshold tuned on validation cutoff ({VALIDATION_CUTOFF}) only, maximizing F1: "
-        f"X = {threshold:.0f} days (validation F1 = {val_f1:.3f})."
+        f"Threshold tuned on validation cutoff ({VALIDATION_CUTOFF}) only, maximizing Youden's "
+        f"J (TPR - FPR), not F1 -- F1-argmax degenerates under this population's class balance, "
+        f"see BUGLOG.md entry 5: X = {threshold:.0f} days (validation J = "
+        f"{tune_result_recency['youden_j']:.3f}, TPR = {vstats['tpr']:.3f}, "
+        f"FPR = {vstats['fpr']:.3f})."
     )
     lines.append(
         f"At this threshold on test cutoff B: precision={precision:.3f}, recall={recall:.3f}, "

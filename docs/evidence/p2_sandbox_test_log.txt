@@ -107,3 +107,80 @@ LightGBM PR-AUC CI lower bound (0.866) vs recency rule PR-AUC CI upper bound (0.
 
 
 Written to docs/evidence/p2_results.md
+
+================================================================================
+4. Fix verification: recency threshold tuning switched from F1-argmax to Youden's J
+   (BUGLOG.md entry 5 -- F1-argmax degenerated to X=1 day on Vikram's real run, since
+   his real validation population is 66.8% churned under this label definition).
+   Re-run against the synthetic fixture after the fix:
+================================================================================
+# Phase 2 results
+
+Generated: 2026-10-10
+
+Validation cutoff: 2010-12-01. Train cutoff A: 2011-03-01. Test cutoff B: 2011-09-01 (evaluated once, below).
+
+## Class balance
+
+- validation (2010-12-01): n=243, churned=136, churn_rate=0.560
+- train_A (2011-03-01): n=310, churned=146, churn_rate=0.471
+- test_B (2011-09-01): n=400, churned=237, churn_rate=0.593
+
+## Recency rule
+
+Threshold tuned on validation cutoff (2010-12-01) only, maximizing Youden's J (TPR - FPR), not F1 -- F1-argmax degenerates under this population's class balance, see BUGLOG.md entry 5: X = 63 days (validation J = 0.594, TPR = 0.706, FPR = 0.112).
+At this threshold on test cutoff B: precision=0.822, recall=0.840, tp=199, fp=43, fn=38.
+Calibration: not reported for the recency rule -- a raw day count is not a probability (see docs/design.md).
+
+## LightGBM tuning (validation cutoff only, never touches B)
+
+- params={'num_leaves': 7, 'learning_rate': 0.1, 'min_child_samples': 20}, best_iteration=20, val_pr_auc=0.864
+- params={'num_leaves': 15, 'learning_rate': 0.05, 'min_child_samples': 20}, best_iteration=3, val_pr_auc=0.848
+- params={'num_leaves': 31, 'learning_rate': 0.05, 'min_child_samples': 10}, best_iteration=4, val_pr_auc=0.824
+- params={'num_leaves': 15, 'learning_rate': 0.1, 'min_child_samples': 10}, best_iteration=10, val_pr_auc=0.829
+Winner: params={'num_leaves': 7, 'learning_rate': 0.1, 'min_child_samples': 20}, iterations=20, val_pr_auc=0.864
+
+## Results on test cutoff B (evaluated once)
+
+| Model | PR-AUC (95% CI) | ROC-AUC (95% CI) | Lift @ top decile | Capture @ top decile | Brier score |
+|---|---|---|---|---|---|
+| recency_rule | 0.927 [0.904, 0.948] (n_boot_used=1000) | 0.881 [0.849, 0.912] (n_boot_used=1000) | 1.69x | 0.169 | N/A |
+| logistic_rfm | 0.923 [0.899, 0.945] (n_boot_used=1000) | 0.872 [0.838, 0.903] (n_boot_used=1000) | 1.69x | 0.169 | 0.154 |
+| lightgbm | 0.902 [0.868, 0.934] (n_boot_used=1000) | 0.855 [0.820, 0.892] (n_boot_used=1000) | 1.65x | 0.165 | 0.160 |
+
+## Calibration tables
+
+### Logistic regression (RFM)
+
+| bin        |   n |   mean_predicted |   observed_churn_rate |
+|:-----------|----:|-----------------:|----------------------:|
+| [0.0, 0.1) |   5 |         0.063146 |              0.2      |
+| [0.1, 0.2) |  13 |         0.131721 |              0.153846 |
+| [0.2, 0.3) |  73 |         0.26595  |              0.219178 |
+| [0.3, 0.4) |  84 |         0.343446 |              0.357143 |
+| [0.4, 0.5) |  52 |         0.446199 |              0.557692 |
+| [0.5, 0.6) |  35 |         0.535783 |              0.714286 |
+| [0.6, 0.7) |  23 |         0.641124 |              0.826087 |
+| [0.7, 0.8) |  17 |         0.748667 |              1        |
+| [0.8, 0.9) |  27 |         0.856198 |              1        |
+| [0.9, 1.0) |  71 |         0.952774 |              1        |
+
+### LightGBM
+
+| bin        |   n |   mean_predicted |   observed_churn_rate |
+|:-----------|----:|-----------------:|----------------------:|
+| [0.1, 0.2) |  74 |         0.142577 |              0.189189 |
+| [0.2, 0.3) |  19 |         0.272079 |              0.315789 |
+| [0.3, 0.4) |  66 |         0.345285 |              0.348485 |
+| [0.4, 0.5) |  40 |         0.443933 |              0.4      |
+| [0.5, 0.6) |  31 |         0.550633 |              0.677419 |
+| [0.6, 0.7) |  36 |         0.654418 |              0.861111 |
+| [0.7, 0.8) |  80 |         0.753319 |              0.9125   |
+| [0.8, 0.9) |  54 |         0.831586 |              0.981481 |
+
+## Success criterion (docs/design.md)
+
+LightGBM PR-AUC CI lower bound (0.868) vs recency rule PR-AUC CI upper bound (0.948): overlapping or not clearly ahead -- per the brief's ground rules, this is reported plainly, not glossed over.
+
+
+Written to docs/evidence/p2_results.md

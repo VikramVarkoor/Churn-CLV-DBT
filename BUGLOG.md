@@ -125,3 +125,37 @@ exists in them. If a full refresh is ever needed (e.g. a schema change), rebuild
 immediately afterward (`make build` runs validation, A, and B in sequence) before trusting the
 warehouse again. Recovered in the sandbox by re-running all three `dbt build --vars ...`
 invocations in cutoff order.
+
+## 5. Recency rule's tuned threshold collapsed to a near-trivial value (F1-argmax under class
+   imbalance)
+
+**Symptom:** Vikram's real Phase 2 run (`python3 python/run_phase2.py` against the real
+warehouse) tuned the recency rule's threshold to X = 1 day on the validation cutoff
+(2010-12-01), then reported precision=0.574, recall=0.996 on test cutoff B -- essentially
+"predict almost everyone churns." The ranking metrics (PR-AUC 0.801, ROC-AUC 0.760 for the
+recency rule) were still valid and sane, since those use `recency_days` directly as a continuous
+score and never touch the threshold; only the threshold-based operating point was degenerate.
+
+**How found:** Reviewing Vikram's real `p2_results.md` output. The real validation and train
+populations turned out to be majority-churned under this project's 90-day label definition
+(66.8% churned at the validation cutoff, 64.9% at cutoff A) -- much higher than I'd assumed when
+designing the tuning procedure in docs/design.md, and higher than the synthetic sandbox fixture
+happened to produce (56-59% churned there), which is why this was never caught in sandbox
+testing before shipping.
+
+**Root cause:** `tune_recency_threshold` picked the threshold that maximizes F1. F1-argmax is a
+known-pathological choice under a majority-positive class: since recall dominates F1 when
+precision is already high at low thresholds, the search keeps lowering the threshold toward
+"flag everyone" because each step trades a small precision loss for a recall gain that F1 weighs
+favorably, with no term in F1 to penalize false positives against the (large) true negative
+population. This is a property of F1 itself, not a coding error.
+
+**Fix:** Changed the selection criterion to Youden's J statistic (max of TPR − FPR) in
+`python/churn/baselines.py`. Youden's J is the point on the ROC curve farthest from the
+diagonal and does not have this majority-class collapse: it penalizes false positives by their
+rate against the true negative population directly, rather than letting overall precision mask
+it. Verified in the sandbox against the synthetic fixture (produces a sane, non-degenerate
+threshold there too, just as the old F1 version did -- the bug only showed up on real data
+because of its more extreme class balance). Vikram needs to re-run `python3 python/run_phase2.py`
+(dbt build does not need to be re-run) to get the corrected real threshold and operating-point
+numbers before `docs/evidence/p2_results.md` is finalized.
