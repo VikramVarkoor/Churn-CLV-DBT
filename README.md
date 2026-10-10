@@ -6,9 +6,9 @@ customer lifetime value, and an LLM summary layer with deterministic verificatio
 all three. Every number in this README comes from a real run against the real dataset, logged
 in `docs/evidence/`; nothing here is simulated or estimated.
 
-Status: Phases 0-4 done with real results. This is milestone M1 (Phases 0-3: data audit,
-warehouse, churn, segmentation, CLV) plus the Phase 4 LLM layer. Phase 5 is this README and
-the final cleanup pass.
+Status: Phases 0-5 all done with real results. Phases 0-3 (data audit, warehouse build, churn,
+segmentation, CLV) are milestone M1; Phase 4 adds the LLM summary layer; Phase 5 is this
+README and the final cleanup pass, which is what you're reading now.
 
 ## What this is
 
@@ -69,6 +69,25 @@ them, since a clustering or CLV fit is far more sensitive to a handful of extrem
 a classification model is.
 
 ## Results
+
+### Warehouse build (Phase 1)
+
+The first real `dbt build` against the actual dataset didn't fully succeed: the raw staging
+layer's `unique` test failed with 32,907 duplicate-row groups, and because `dbt build` (unlike
+`dbt test`) blocks every downstream node when an upstream test fails at error severity, all 23
+nodes below it, including the leakage tests that are the whole point of this phase, never ran
+on that first attempt. That block was a real mistake on my part: I'd told Vikram beforehand
+that "everything downstream should still build and pass" alongside one expected failure, which
+was wrong. Fixed by downgrading that one test to `warn` severity (duplicates are expected and
+already handled by deduplication further downstream, so failing the whole build on them was
+never the right severity), after which a second real run passed cleanly: `no_feature_leakage`,
+`no_label_leakage`, and `revenue_reconciles` all passed against the real dataset. The
+32,907-vs-34,335 gap against the Phase 0 pandas audit's duplicate count was reconciled with a
+query, not left open: 32,907 is the number of distinct duplicated row groups, 34,335 is the
+total excess-row count across those groups (some groups have 3+ copies, not just 2). Full
+writeup in `docs/evidence/p1_first_run_failures.md`; the real build log is
+`docs/evidence/p1_dbt_build.txt`; the mistake itself is `BUGLOG.md` entry 3, and the
+`--full-refresh` cross-cutoff deletion footgun found while fixing it is entry 4.
 
 ### Churn prediction (Phase 2)
 
