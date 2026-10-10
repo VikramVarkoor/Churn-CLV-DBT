@@ -1,4 +1,4 @@
-.PHONY: audit build build-validation build-train build-test docs phase2 phase3-segments phase3-clv test
+.PHONY: audit build build-validation build-train build-test docs phase2 phase3-segments phase3-clv phase4-stats phase4-stub phase4 test
 
 # Phase 0: run the data audit against data/raw/online_retail_II.xlsx
 audit:
@@ -36,6 +36,22 @@ phase3-segments:
 # invocation builds both mart_clv_features and mart_clv_holdout_actuals for cutoff A together.
 phase3-clv:
 	python3 python/run_phase3_clv.py
+
+# Phase 4: segment stats JSON (reuses Phase 2's churn model and Phase 3's CLV/segmentation
+# models, no new tuning). Requires `make build` (all three cutoffs) to have been run first.
+phase4-stats:
+	python3 python/build_segment_stats.py
+
+# Phase 4: LLM summaries + verification, offline/deterministic (no API key needed). Requires
+# `make phase4-stats` to have been run first. Good for checking the pipeline works before
+# spending a real Groq call.
+phase4-stub:
+	python3 python/run_phase4.py --stub
+
+# Phase 4: LLM summaries + verification, real Groq call. Requires GROQ_API_KEY to be set --
+# see README.md for how to get one -- and `make phase4-stats` to have been run first.
+phase4:
+	python3 python/run_phase4.py
 
 test:
 	python3 -m pytest tests/ -v
