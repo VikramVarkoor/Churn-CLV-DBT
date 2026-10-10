@@ -219,3 +219,54 @@ model is.
   Spearman rank correlation (predicted CLV rank vs actual spend rank), plus a predicted-vs-actual
   table by decile of predicted CLV. Fit quality alone (e.g. in-sample log-likelihood) is not
   reported as validation, per the brief's explicit instruction that fit alone is not validation.
+
+## Phase 4 implementation decisions (locked here, before LLM code exists)
+
+- **Population and cutoff for the segment stats JSON:** cutoff B (2011-09-01), reusing the
+  already-committed Phase 3 "all customers" segmentation (the real population, not the
+  wholesaler-excluded variant) as the canonical segment assignment, since that is the most
+  recent, most complete real snapshot already reported in `p3_segments.md`.
+- **Predicted churn rate per segment:** the exact same tuning/fit procedure from Phase 2
+  (`python/churn/model.py`'s `tune_gbm` + `fit_final_gbm`, same `random_state=42`, LightGBM
+  trained on cutoff A/validation) is re-run to score cutoff B's population -- this is the same
+  out-of-sample test-cutoff scoring Phase 2 already did and reported (PR-AUC etc. in
+  `p2_results.md`), just with the per-customer probabilities persisted this time so they can be
+  averaged per segment. No new modeling decision, no re-tuning.
+- **Predicted CLV per segment:** `mart_clv_features` is already built for cutoff B (same
+  parameterized model used for cutoff A in Phase 3, just a different `--vars cutoff_date`). The
+  BG/NBD and Gamma-Gamma models are refit on cutoff A's calibration population (identical
+  procedure to Phase 3, now with an explicit `random_seed=42` for reproducibility -- see
+  `python/clv/model.py`), then used to score cutoff B's own customers via `predict_clv`, which
+  already supports out-of-sample customers (pymc-marketing's own docs: "the data parameter is
+  only required for out-of-sample customers"). The prediction horizon is 245 days, reusing
+  Phase 3's own already-validated holdout window rather than introducing a new, unvalidated
+  horizon -- the accuracy characteristics reported in `p3_clv_validation.md` are the ones that
+  apply here, since nothing about the window changed, only which population is being scored.
+- **Segment stats JSON fields:** per segment -- `segment_id`, `n_customers`,
+  `share_of_customers`, `share_of_revenue`, `mean_recency_days`, `mean_frequency`,
+  `mean_monetary_net`, `predicted_churn_rate` (mean of individual predicted probabilities, not a
+  hard-threshold rate), `predicted_clv_245d` (mean of individual predicted spend over the
+  245-day horizon). All numbers rounded to a fixed, documented precision before being handed to
+  the LLM, so the verification step's tolerance check has an unambiguous source of truth.
+- **LLM:** Groq, checked against Groq's own current model docs (not assumed): default model
+  `llama-3.3-70b-versatile`, one of Groq's current production chat models as of this check.
+  Configurable via an env var so Vikram can swap models without code changes. Temperature 0, per
+  the brief. The prompt instructs the model to write a short summary per segment for a
+  non-technical marketing reader, using only the numbers given for that segment, inventing none,
+  and making no causal claims -- and explicitly lists the segment's own numbers in the prompt so
+  the model is never asked to recall or guess them.
+- **Stub vs. real client:** a single `LLMClient` interface (`python/llm/client.py`) with two
+  implementations -- `StubClient` (returns a fixed, deterministic set of example summaries,
+  including at least one deliberately broken one, for offline testing) and `GroqClient` (calls
+  the real API via the `groq` package, key read from the `GROQ_API_KEY` environment variable,
+  never hardcoded or committed). The orchestration script and the verification script are
+  identical either way -- only which client is passed in changes, selected by a `--stub` flag.
+- **Verification:** every number the LLM's summary contains (parsed via regex, handling `$`,
+  `%`, commas, and decimals) must match some number in that segment's JSON entry after rounding
+  to the same precision the JSON was built at; any number that doesn't match is flagged as
+  unsupported. Any segment name or ID mentioned that isn't a real key in the JSON is flagged.
+  Causal-language markers (a fixed list: "because", "due to", "causes", "drives", "leads to",
+  "results in", "so that", "therefore", "as a result") are flagged if present. A summary passes
+  only if none of these three checks fire. The verifier is tested against deliberately broken
+  fixtures before being trusted on real output, same discipline as the dbt/pytest leakage
+  checks in Phases 1-3.
