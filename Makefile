@@ -1,4 +1,4 @@
-.PHONY: audit build build-validation build-train build-test docs phase2 phase3-segments phase3-clv phase4-stats phase4-stub phase4 test
+.PHONY: all audit build build-validation build-train build-test docs phase2 phase3-segments phase3-clv phase4-stats phase4-stub phase4 test
 
 # Phase 0: run the data audit against data/raw/online_retail_II.xlsx
 audit:
@@ -59,3 +59,15 @@ test:
 docs:
 	dbt docs generate --profiles-dir .
 	dbt docs serve --profiles-dir .
+
+# Everything that doesn't need a Groq API key: build the warehouse, run the full pytest
+# suite, and produce Phase 2/3/4's evidence (segment stats, not the LLM summaries -- that one
+# costs a real API call and needs GROQ_API_KEY, so it's deliberately left out of `all`; run
+# `make phase4` for that once you have a key). Requires `data/raw/online_retail_ii_combined.parquet`
+# to already exist -- see data/raw/README.md if it doesn't, or `make audit` after placing the
+# raw .xlsx file there.
+all: build test phase2 phase3-segments phase3-clv phase4-stats
+	@echo ""
+	@echo "Done. Everything above is reproducible with no API key. For Phase 4's real LLM"
+	@echo "summaries: get a key at https://console.groq.com/keys, then"
+	@echo "  export GROQ_API_KEY=... && make phase4"
