@@ -141,3 +141,75 @@ model is.
   as a native LightGBM eval metric in sandbox testing). The winning params and early-stopped
   iteration count are then used to refit one final model on cutoff A alone (never on B) before
   the single, final evaluation on cutoff B.
+
+## Phase 3 implementation decisions (locked here, before segmentation/CLV code exists)
+
+- **Segmentation snapshot:** cutoff B (2011-09-01), reusing the already-built `mart_customer_features`
+  for that cutoff rather than introducing a fourth cutoff. Segmentation is a description of the
+  customer base as of a point in time, not a leakage-sensitive prediction, so it does not need its
+  own train/test split -- it needs one defensible, already-audited snapshot, and cutoff B has the
+  longest feature-building history of the three.
+- **RFM quintile scoring:** recency_days, frequency, monetary_net from `mart_customer_features` at
+  cutoff B, each independently ranked into quintiles 1-5 (`pd.qcut`, duplicates dropped where the
+  data has ties at a bin edge, which is noted in p3_segments.md if it reduces the quintile count
+  below 5 for any dimension). Recency is scored in reverse (low recency_days = good = quintile 5)
+  so that higher is better on all three axes, matching standard RFM convention.
+- **K-means:** fit on log1p-transformed, standardized (StandardScaler) recency_days, frequency,
+  monetary_net. Log transform first because all three are heavily right-skewed (confirmed in
+  docs/audit.md's order-size distribution and in Phase 1/2's real class-balance and feature
+  output) and k-means uses Euclidean distance, which is dominated by the raw monetary_net scale
+  otherwise. k chosen from a grid (k=3..8) by silhouette score, then checked for interpretability
+  (a k that produces a segment under 1% of customers is flagged, not automatically rejected --
+  small-but-real segments like wholesalers are a legitimate finding, not noise).
+- **Stability:** bootstrap-ARI -- refit k-means on B bootstrap resamples (customers, with
+  replacement) of the same population, compute the adjusted Rand index between each resample's
+  labels and the full-population labels (restricted to the resample's own customers), report the
+  mean and a percentile interval. This checks whether the chosen k produces the same partition
+  under resampling, not just a locally good silhouette score.
+- **Wholesaler with/without:** the full pipeline above (RFM quintiles, k selection, k-means,
+  bootstrap-ARI) is run twice: once on all of cutoff B's population, once excluding customers
+  flagged `is_wholesaler` by the Phase 0 rule. Both k choices, silhouette scores, and stability
+  numbers are reported side by side in p3_segments.md; segment names are assigned from each run's
+  own statistics only (e.g. "high-value repeat buyers"), never a fixed label list.
+- **CLV library: PyMC-Marketing.** Checked before committing, not assumed, per the brief:
+  `lifetimes` (PyPI) last released 0.11.3 on 2020-07-06 -- over five years stale, confirms the
+  brief's own note that it is no longer actively developed. `pymc-marketing` latest release is
+  1.2.0 (2026-09-29, actively maintained) and its full dependency chain installs from wheels on
+  macOS arm64 with no C compiler needed: `pymc-marketing` itself and `pymc` 6.3.2 both ship
+  `py3-none-any` wheels, `arviz` 1.3.0 is pure Python, and `pytensor` 3.3.3 (pymc's compute
+  backend) ships `cp312`/`cp313`/`cp314` `macosx_11_0_arm64` wheels -- checked directly against
+  PyPI's JSON API, not assumed. This matters because the Xcode Command Line Tools license wall
+  already blocked a compiler-dependent step once in this project (BUGLOG.md entry about `make`);
+  a pure-wheel install chain avoids that risk entirely. `lifetimes`'s own data-prep utilities
+  (e.g. `summary_data_from_transaction_data`) are not used either way, since the project's own
+  design rule is that features come from parameterized dbt SQL, not ad hoc Python.
+- **CLV feature convention (BG/NBD/Gamma-Gamma), a new mart, not a reuse of mart_customer_features:**
+  BG/NBD needs frequency defined as *repeat* purchase count (first purchase excluded), `T` =
+  calibration-period customer age (first purchase to the calibration cutoff), and `recency` =
+  time from first to *last* purchase within the calibration period -- all different from
+  `mart_customer_features`'s own recency/frequency definitions (days-since-last-purchase,
+  total purchase count), which were built for the churn label, not for BG/NBD. Rather than
+  overload one mart with two incompatible conventions, Phase 3 adds `mart_clv_features`
+  (parameterized by `cutoff_date`, same pattern as the existing marts) computing frequency_repeat,
+  T, recency_cal, and monetary_value (average order value of repeat orders only, net of
+  cancellations) from history strictly before the cutoff.
+- **Calibration cutoff and holdout window:** calibration cutoff = 2011-03-01 (cutoff A, reused --
+  it already has about 15 months of pre-period history for BG/NBD to fit on, versus cutoff B's
+  leftover runway for a holdout). Holdout window ends 2011-11-01 (245 days after the calibration
+  cutoff). Checked against the real last row (2011-12-09 12:50:00, confirmed in docs/audit.md):
+  this leaves 38 days of margin, so the holdout window is fully inside observed data, not flush
+  against the edge, the same discipline Phase 0 applied to the churn cutoffs. A new
+  `mart_clv_holdout_actuals` (also parameterized by `cutoff_date`, using a fixed 245-day window)
+  computes each customer's actual transaction count and actual net spend in
+  `[cutoff_date, cutoff_date + 245 days)`, for validation only -- never fed into fitting.
+- **Gamma-Gamma assumption check:** Gamma-Gamma assumes frequency and average monetary value are
+  uncorrelated among repeat customers. This is checked, not assumed: Pearson correlation between
+  frequency_repeat and monetary_value, computed over customers with frequency_repeat >= 1 in the
+  calibration population, is reported in p3_clv_validation.md whatever its value turns out to be.
+- **Validation:** fit BG/NBD on frequency_repeat/T/recency_cal, fit Gamma-Gamma on
+  frequency_repeat/monetary_value (repeat customers only, per the model's own requirement),
+  predict expected transactions and expected monetary value over the 245-day holdout window, and
+  compare against `mart_clv_holdout_actuals` with MAE (both transaction count and spend) and
+  Spearman rank correlation (predicted CLV rank vs actual spend rank), plus a predicted-vs-actual
+  table by decile of predicted CLV. Fit quality alone (e.g. in-sample log-likelihood) is not
+  reported as validation, per the brief's explicit instruction that fit alone is not validation.
