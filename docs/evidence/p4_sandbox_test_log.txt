@@ -1,0 +1,69 @@
+=== Phase 4 sandbox verification log (synthetic fixture, NOT real evidence) ===
+Generated: 2026-10-10 by the build sandbox, against the same synthetic fixture used for
+Phases 2 and 3 (400 customers, 5 archetypes, same real date range). This confirms
+python/build_segment_stats.py -- which re-runs Phase 3's "all customers" segmentation,
+Phase 2's churn tuning/fit/scoring, and Phase 3's CLV fit/scoring, exactly as already
+validated, and joins/aggregates the three per-customer outputs into the segment stats JSON
+the LLM layer will read -- is mechanically correct before shipping it. NOT a substitute for
+the real data/segment_stats.json, which must come from Vikram's own run against the real
+warehouse.
+
+--- pytest tests/test_phase4_segment_stats.py (pure-Python aggregation logic, no warehouse
+    needed): 4/4 passed ---
+test_shares_sum_to_one PASSED
+test_segment_values_are_segment_specific_means PASSED
+test_raises_on_population_mismatch PASSED (deliberately dropped one customer from the
+    churn-scored frame before joining; confirmed the ValueError fires with "Join dropped
+    rows" rather than silently aggregating a smaller, mismatched population)
+test_rounding_precision_applied PASSED
+
+--- full pytest suite (tests/), to confirm nothing in Phase 2/3's existing leakage checks or
+    determinism checks regressed: 13/13 passed ---
+
+--- python3 python/build_segment_stats.py output, against the synthetic fixture warehouse
+    (cutoffs already built in Phase 2/3's sandbox testing) ---
+[build_segmentation] chosen k=3 (silhouette=0.416). p3_segments.md reports k=4 on the real
+"all customers" population at this cutoff; on the sandbox's small synthetic fixture this
+legitimately picks a different k, same as Phase 3's own sandbox-vs-real numbers differed
+while the pipeline itself stayed identical (see p3_sandbox_test_log.txt: sandbox chose k=3
+there too, real data chose k=4).
+
+{
+  "generated": "2026-10-10",
+  "population_cutoff": "2011-09-01",
+  "clv_horizon_days": 245,
+  "segments": [
+    {"segment_id": 2, "n_customers": 21, "share_of_customers": 0.0525, "share_of_revenue": 0.8122,
+     "mean_recency_days": 35.0, "mean_frequency": 38.33, "mean_monetary_net": 265915.0,
+     "predicted_churn_rate": 0.2845, "predicted_clv_245d": 121445.36},
+    {"segment_id": 1, "n_customers": 240, "share_of_customers": 0.6, "share_of_revenue": 0.1654,
+     "mean_recency_days": 93.2, "mean_frequency": 7.17, "mean_monetary_net": 4739.34,
+     "predicted_churn_rate": 0.4271, "predicted_clv_245d": 2030.67},
+    {"segment_id": 0, "n_customers": 139, "share_of_customers": 0.3475, "share_of_revenue": 0.0224,
+     "mean_recency_days": 280.3, "mean_frequency": 1.94, "mean_monetary_net": 1106.6,
+     "predicted_churn_rate": 0.6732, "predicted_clv_245d": 635.89}
+  ]
+}
+
+--- Sanity check on this output (not a statistical claim, just checking nothing is
+    obviously broken before this becomes LLM input) ---
+The ranking is internally consistent in the direction expected from Phase 2/3's own results:
+the high-frequency, low-recency segment (segment 2: recency 35 days, frequency 38.33) has
+the lowest predicted churn (0.2845) and highest predicted CLV (121445.36); the long-recency,
+low-frequency segment (segment 0: recency 280 days, frequency 1.94) has the highest predicted
+churn (0.6732) and lowest predicted CLV (635.89). This is what should happen given Phase 2's
+model uses recency/frequency as leading features and Phase 3's CLV model is driven by the
+same BG/NBD recency/frequency inputs -- it is not independent confirmation that either model
+is accurate (that was already established, honestly, with moderate results, in p2_results.md
+and p3_clv_validation.md), only that this new join/aggregation step did not scramble or
+misalign the three per-customer outputs when combining them.
+
+--- Cleanup ---
+docs/evidence/segment_stats.json (the file this script writes) was deleted after this test
+run so it does not ship in the Phase 4 zip and does not get mistaken for real evidence. It is
+regenerated fresh when Vikram runs python/build_segment_stats.py against the real warehouse.
+
+--- Real run: pending ---
+Not yet run against the real warehouse. This is the first thing Vikram needs to run for
+Phase 4, same workflow as Phases 2 and 3: run it on the real warehouse.duckdb, paste the
+output here (or hand it over) so it gets logged as real evidence and committed.

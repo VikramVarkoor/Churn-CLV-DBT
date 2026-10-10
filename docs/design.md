@@ -248,6 +248,18 @@ model is.
   hard-threshold rate), `predicted_clv_245d` (mean of individual predicted spend over the
   245-day horizon). All numbers rounded to a fixed, documented precision before being handed to
   the LLM, so the verification step's tolerance check has an unambiguous source of truth.
+  Written by `python/build_segment_stats.py` to `docs/evidence/segment_stats.json` -- not under
+  `data/`, since (unlike `data/warehouse.duckdb`) this is a small, human-readable evidence
+  artifact of the same kind as `p2_results.md`/`p3_segments.md`, and it is meant to be committed
+  once it holds real numbers, not gitignored. The same script re-runs Phase 3's "all customers"
+  segmentation, Phase 2's exact churn tuning/fit, and Phase 3's exact CLV fit -- no new modeling
+  code -- and raises rather than silently dropping rows if the three per-customer populations
+  (segmentation, churn-scored, CLV-scored) don't line up after the join. Tested against the
+  synthetic fixture in `tests/test_phase4_segment_stats.py` (pure aggregation logic, including a
+  deliberately-mismatched-population case) and `docs/evidence/p4_sandbox_test_log.txt` (full
+  pipeline run); the sandbox fixture's small population picks a different k than the real one
+  did in Phase 3 (k=3 vs k=4), same already-documented sandbox-vs-real divergence as
+  `p3_sandbox_test_log.txt`, not a new issue.
 - **LLM:** Groq, checked against Groq's own current model docs (not assumed): default model
   `llama-3.3-70b-versatile`, one of Groq's current production chat models as of this check.
   Configurable via an env var so Vikram can swap models without code changes. Temperature 0, per
