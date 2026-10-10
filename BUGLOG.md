@@ -159,3 +159,12 @@ threshold there too, just as the old F1 version did -- the bug only showed up on
 because of its more extreme class balance). Vikram needs to re-run `python3 python/run_phase2.py`
 (dbt build does not need to be re-run) to get the corrected real threshold and operating-point
 numbers before `docs/evidence/p2_results.md` is finalized.
+
+**Confirmed fixed on real data:** Vikram re-ran `python3 python/run_phase2.py` against the real
+warehouse after pulling the fix. The threshold is now X = 49 days (validation J = 0.303, TPR =
+0.591, FPR = 0.289), giving precision=0.673, recall=0.885 on test cutoff B -- a sane operating
+point, not "flag almost everyone." Every other number in the report (class balance, LightGBM
+tuning trials, the PR-AUC/ROC-AUC/lift/capture/Brier results table, both calibration tables, and
+the success-criterion check) is byte-identical to the pre-fix real run, confirming the bug was
+isolated to the threshold-based operating point exactly as predicted -- the ranking metrics never
+used the threshold. Real, final output is in `docs/evidence/p2_results.md`.
