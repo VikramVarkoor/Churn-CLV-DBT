@@ -1,10 +1,9 @@
 # Customer Churn, Segmentation, and CLV on a dbt + DuckDB Warehouse
 
-Status: Phases 0-2 done (data audit, design lock, dbt + DuckDB warehouse, leakage-safe churn
-model with an out-of-time test). Phase 3 (segmentation and CLV) code is written and verified
-against a synthetic fixture in the build sandbox; real results are still TBD pending a real run
-(see docs/evidence/p3_segments.md, p3_clv_validation.md). This README will be filled in properly
-during Phase 5 per the project plan; until then it just orients anyone opening the repo early.
+Status: Phases 0-3 done (data audit, design lock, dbt + DuckDB warehouse, leakage-safe churn
+model with an out-of-time test, RFM/k-means segmentation, BG/NBD + Gamma-Gamma CLV with holdout
+validation). This is milestone M1 per the project plan. This README will be filled in properly
+during Phase 5; until then it just orients anyone opening the repo early.
 
 ## Phase 2 headline result
 
@@ -17,6 +16,24 @@ win, and logistic regression and LightGBM are indistinguishable from each other.
 plainly rather than leading with the raw point estimates, per this project's own ground rules. Full
 numbers, calibration tables, and the tuning trace are in `docs/evidence/p2_results.md`; a real bug
 in the threshold-tuning code (and its fix) is logged in `BUGLOG.md` entry 5.
+
+## Phase 3 headline results
+
+Segmentation (cutoff B, 5224 customers): k-means on log-scaled, standardized RFM lands on 4
+segments either way, with or without the 53 flagged wholesalers (silhouette ~0.376, bootstrap-ARI
+stability ~0.955, a tight 95% interval). Wholesalers don't change the cluster structure, but they
+concentrate revenue: the top segment holds 68.1% of revenue from 16.5% of customers with
+wholesalers included, versus 59.9% from 17.9% with them excluded. Full tables in
+`docs/evidence/p3_segments.md`.
+
+CLV (BG/NBD + Gamma-Gamma, fit on cutoff A, validated on a real 245-day holdout never used in
+fitting): the Gamma-Gamma uncorrelated-frequency-and-spend assumption was checked, not assumed,
+and holds on the real data (Pearson correlation 0.061 among repeat customers). The model ranks
+customers correctly (predicted and actual both rise monotonically by decile, and the top decile
+is close: predicted 10,015 vs actual 9,615 transactions), but is not precise in the middle of the
+distribution, and the rank correlations are moderate rather than strong (0.593 transactions, 0.597
+spend). This is reported as a usable ranking signal, not a precise forecast. Full numbers in
+`docs/evidence/p3_clv_validation.md`.
 
 ## What this is
 

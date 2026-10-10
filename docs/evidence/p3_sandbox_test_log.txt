@@ -138,3 +138,12 @@ with --full-refresh, and confirmed both independent checks caught it:
 Reverted the SQL, rebuilt all three cutoffs with --full-refresh again, re-ran the full dbt
 build and pytest suite: PASS=45/45 for every cutoff, 9/9 pytest tests passing. Confirms the new
 leakage tests genuinely catch a real leak rather than passing trivially.
+
+--- Real run confirmation ---
+Vikram ran `python3 python/run_phase3_segments.py` and `python3 python/run_phase3_clv.py`
+against the real warehouse (5224 customers at cutoff B, 4512 at cutoff A). Both completed
+without errors, both dbt builds for cutoff A and B passed 44/45 tests (same single expected
+WARN as every prior real run, BUGLOG.md entry 3), and the real output matches this sandbox run's
+structure (same k=4 win, same decile monotonicity in CLV validation) while differing in the
+actual numbers, as expected for a real population. No new bugs surfaced. Real results are in
+docs/evidence/p3_segments.md and p3_clv_validation.md, not here.
