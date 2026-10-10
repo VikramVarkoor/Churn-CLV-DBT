@@ -100,3 +100,41 @@ model is.
 - **Success is relative, not absolute:** the model needs to clearly beat the recency baseline with
   non-overlapping confidence intervals. If it doesn't, the README reports that plainly, per the
   brief's ground rules, rather than reporting the model's raw number alone.
+
+## Phase 2 implementation decisions (locked here, before model code exists)
+
+- **Validation cutoff:** 2010-12-01, as proposed above. Its 90-day label window is
+  [2010-12-01, 2011-03-01), which touches cutoff A's date but not A's data -- the validation
+  cutoff's features and labels are computed independently, straight from history before
+  2010-12-01, the same way cutoff A and B are. This needs its own `dbt build --vars
+  '{cutoff_date: "2010-12-01"}'` run against the real warehouse before Phase 2 can tune anything
+  for real.
+- **Gradient boosting library: LightGBM.** Checked before committing (not assumed): LightGBM
+  4.7.0 ships a pure-wheel (`py3-none`) build for macOS arm64, so no C compiler is needed on
+  Vikram's Mac, which matters given the Xcode Command Line Tools license wall already hit once in
+  Phase 1 (BUGLOG.md). scikit-learn and scipy also have cp314 arm64 wheels, confirmed directly
+  against PyPI before adding them to requirements.txt.
+- **Recency rule, used two ways, not one:** the brief's metrics (PR-AUC, ROC-AUC, lift/capture at
+  decile, calibration) are ranking/probabilistic metrics; a bare threshold rule only produces a
+  hard yes/no. So `recency_days` itself is used directly as a continuous ranking score for the
+  ranking metrics (directly comparable to the other two models on the same footing), and
+  separately, a threshold X is tuned on the validation cutoff (grid search over observed
+  recency_days values, maximizing F1) to report an interpretable precision/recall/accuracy
+  operating point. Calibration is not reported for the recency rule -- a raw day count is not a
+  probability, and forcing one through an arbitrary transform just to fill in a number would be
+  exactly the kind of invented precision the brief's ground rules rule out.
+- **Logistic regression baseline features:** recency_days, frequency, monetary_net only (RFM,
+  per the brief's own wording), standardized before fitting.
+- **Gradient boosting features:** the full mart_customer_features set (recency, frequency,
+  monetary_net, monetary_gross, tenure, avg_basket_value, distinct_products,
+  mean_days_between_purchases, cancellation_rate, total_quantity_purchased, is_wholesaler).
+  `country` is left out of modeling for now (high-cardinality categorical, no encoding scheme
+  decided yet) -- noted here rather than silently dropped. `mean_days_between_purchases` is null
+  for single-purchase customers; LightGBM handles missing values natively (verified in sandbox
+  testing, not assumed from documentation), so this is left as a real null, not imputed.
+- **Tuning procedure:** a small fixed grid of LightGBM hyperparameters (num_leaves, learning_rate,
+  min_child_samples), each fit on cutoff A's population with early stopping evaluated on the
+  validation cutoff's population, selecting by validation PR-AUC (`average_precision`, confirmed
+  as a native LightGBM eval metric in sandbox testing). The winning params and early-stopped
+  iteration count are then used to refit one final model on cutoff A alone (never on B) before
+  the single, final evaluation on cutoff B.

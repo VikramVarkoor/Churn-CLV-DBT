@@ -1,7 +1,8 @@
 # Customer Churn, Segmentation, and CLV on a dbt + DuckDB Warehouse
 
-Status: Phase 0 in progress (data audit and design lock). This README will be filled in during
-Phase 5 per the project plan; until then it just orients anyone opening the repo early.
+Status: Phases 0-1 done (data audit, design lock, dbt + DuckDB warehouse). Phase 2 (churn model)
+in progress. This README will be filled in properly during Phase 5 per the project plan; until
+then it just orients anyone opening the repo early.
 
 ## What this is
 

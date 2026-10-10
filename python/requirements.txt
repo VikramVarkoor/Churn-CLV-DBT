@@ -4,3 +4,7 @@ openpyxl
 pyarrow
 dbt-core
 dbt-duckdb
+scikit-learn
+lightgbm
+scipy
+pytest

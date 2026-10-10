@@ -1,0 +1,109 @@
+Sandbox verification run for Phase 2, against a synthetic fixture (400 synthetic
+customers, generated with python/../scratchpad/gen_phase2_fixture.py, NOT the real
+dataset). This file exists to prove the Phase 2 code is mechanically correct -- the
+pipeline runs end to end, the pytest leakage checks genuinely catch a planted bug (not
+just pass trivially), and bootstrap CIs / calibration compute sane values -- before
+shipping it to Vikram. It is NOT the required Phase 2 evidence. docs/evidence/p2_results.md
+stays TBD until Vikram runs this against the real warehouse on his Mac.
+
+================================================================================
+1. pytest leakage checks, clean synthetic warehouse
+================================================================================
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/claude/churn-clv-dbt
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 4 items
+
+tests/test_phase2_leakage.py::test_cutoffs_exist PASSED                  [ 25%]
+tests/test_phase2_leakage.py::test_recency_matches_independent_recomputation PASSED [ 50%]
+tests/test_phase2_leakage.py::test_churn_label_matches_independent_recomputation PASSED [ 75%]
+tests/test_phase2_leakage.py::test_no_unexpected_nulls_in_model_inputs PASSED [100%]
+
+============================== 4 passed in 0.44s ===============================
+
+================================================================================
+2. Leakage check catches a PLANTED bug (mart_customer_features history filter
+   changed to leak 10 days of future data), then reverted -- proving the pytest
+   check is not trivially passing. Full before/after already run interactively;
+   key line reproduced here:
+================================================================================
+FAILED tests/test_phase2_leakage.py::test_recency_matches_independent_recomputation
+AssertionError: recency_days mismatch (possible leakage) at cutoff=2011-09-01 00:00:00: 39 rows
+(reverted, full suite passes again -- confirmed above in section 1, re-run after revert)
+
+================================================================================
+3. Full Phase 2 pipeline run (python/run_phase2.py)
+================================================================================
+# Phase 2 results
+
+Generated: 2026-10-10
+
+Validation cutoff: 2010-12-01. Train cutoff A: 2011-03-01. Test cutoff B: 2011-09-01 (evaluated once, below).
+
+## Class balance
+
+- validation (2010-12-01): n=243, churned=136, churn_rate=0.560
+- train_A (2011-03-01): n=310, churned=146, churn_rate=0.471
+- test_B (2011-09-01): n=400, churned=237, churn_rate=0.593
+
+## Recency rule
+
+Threshold tuned on validation cutoff (2010-12-01) only, maximizing F1: X = 57 days (validation F1 = 0.800).
+At this threshold on test cutoff B: precision=0.799, recall=0.857, tp=203, fp=51, fn=34.
+Calibration: not reported for the recency rule -- a raw day count is not a probability (see docs/design.md).
+
+## LightGBM tuning (validation cutoff only, never touches B)
+
+- params={'num_leaves': 7, 'learning_rate': 0.1, 'min_child_samples': 20}, best_iteration=20, val_pr_auc=0.864
+- params={'num_leaves': 15, 'learning_rate': 0.05, 'min_child_samples': 20}, best_iteration=3, val_pr_auc=0.848
+- params={'num_leaves': 31, 'learning_rate': 0.05, 'min_child_samples': 10}, best_iteration=4, val_pr_auc=0.824
+- params={'num_leaves': 15, 'learning_rate': 0.1, 'min_child_samples': 10}, best_iteration=10, val_pr_auc=0.829
+Winner: params={'num_leaves': 7, 'learning_rate': 0.1, 'min_child_samples': 20}, iterations=20, val_pr_auc=0.864
+
+## Results on test cutoff B (evaluated once)
+
+| Model | PR-AUC (95% CI) | ROC-AUC (95% CI) | Lift @ top decile | Capture @ top decile | Brier score |
+|---|---|---|---|---|---|
+| recency_rule | 0.927 [0.900, 0.949] (n_boot_used=1000) | 0.881 [0.846, 0.912] (n_boot_used=1000) | 1.69x | 0.169 | N/A |
+| logistic_rfm | 0.923 [0.896, 0.946] (n_boot_used=1000) | 0.872 [0.836, 0.904] (n_boot_used=1000) | 1.69x | 0.169 | 0.154 |
+| lightgbm | 0.902 [0.866, 0.932] (n_boot_used=1000) | 0.855 [0.814, 0.892] (n_boot_used=1000) | 1.65x | 0.165 | 0.160 |
+
+## Calibration tables
+
+### Logistic regression (RFM)
+
+| bin        |   n |   mean_predicted |   observed_churn_rate |
+|:-----------|----:|-----------------:|----------------------:|
+| [0.0, 0.1) |   5 |         0.063146 |              0.2      |
+| [0.1, 0.2) |  13 |         0.131721 |              0.153846 |
+| [0.2, 0.3) |  73 |         0.26595  |              0.219178 |
+| [0.3, 0.4) |  84 |         0.343446 |              0.357143 |
+| [0.4, 0.5) |  52 |         0.446199 |              0.557692 |
+| [0.5, 0.6) |  35 |         0.535783 |              0.714286 |
+| [0.6, 0.7) |  23 |         0.641124 |              0.826087 |
+| [0.7, 0.8) |  17 |         0.748667 |              1        |
+| [0.8, 0.9) |  27 |         0.856198 |              1        |
+| [0.9, 1.0) |  71 |         0.952774 |              1        |
+
+### LightGBM
+
+| bin        |   n |   mean_predicted |   observed_churn_rate |
+|:-----------|----:|-----------------:|----------------------:|
+| [0.1, 0.2) |  74 |         0.142577 |              0.189189 |
+| [0.2, 0.3) |  19 |         0.272079 |              0.315789 |
+| [0.3, 0.4) |  66 |         0.345285 |              0.348485 |
+| [0.4, 0.5) |  40 |         0.443933 |              0.4      |
+| [0.5, 0.6) |  31 |         0.550633 |              0.677419 |
+| [0.6, 0.7) |  36 |         0.654418 |              0.861111 |
+| [0.7, 0.8) |  80 |         0.753319 |              0.9125   |
+| [0.8, 0.9) |  54 |         0.831586 |              0.981481 |
+
+## Success criterion (docs/design.md)
+
+LightGBM PR-AUC CI lower bound (0.866) vs recency rule PR-AUC CI upper bound (0.949): overlapping or not clearly ahead -- per the brief's ground rules, this is reported plainly, not glossed over.
+
+
+Written to docs/evidence/p2_results.md

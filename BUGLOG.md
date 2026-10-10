@@ -93,3 +93,35 @@ select count(*) as duplicate_groups, sum(n - 1) as excess_rows from dupes
 -- (32907, 34335)
 ```
 Exact match on both numbers. No remaining discrepancy.
+
+## 4. `dbt build --full-refresh --select <model>` on one cutoff silently deletes every OTHER
+   cutoff's rows from that incremental table
+
+**Symptom:** While sandbox-testing Phase 2's pytest leakage check, I deliberately planted a
+one-line leak in `mart_customer_features.sql`, ran
+`dbt build --vars '{cutoff_date: "2011-09-01"}' --select mart_customer_features --full-refresh`
+to force a rebuild without needing to wait for incremental merge logic, confirmed the test caught
+it, reverted the SQL, and re-ran the same `--full-refresh` command to restore a clean state.
+Querying the warehouse afterward: `mart_customer_features` only had rows for `cutoff_date =
+2011-09-01` -- the validation cutoff (2010-12-01) and train cutoff A (2011-03-01) rows, built in
+earlier runs, were gone.
+
+**How found:** Sandbox testing against a synthetic fixture for Phase 2, before shipping anything
+to Vikram. Caught by a row-count sanity check I ran out of habit after the revert, not because
+anything else flagged it.
+
+**Root cause:** `--full-refresh` drops and recreates the entire physical table for the selected
+model(s), not just the current invocation's slice of it. The incremental `delete+insert` strategy
+only protects accumulation across normal incremental runs (matching rows by `unique_key`); a full
+refresh bypasses that entirely and rebuilds from scratch using only whatever `--vars` were passed
+to that one invocation. This is standard, documented dbt behavior, not a bug in this project's
+SQL -- but it is a real operational trap for a multi-cutoff incremental design like this one,
+worth knowing before using `--full-refresh` for anything other than a full `make build` across
+all cutoffs.
+
+**Fix:** Not a code fix -- an operational rule, now documented here and in the Makefile/README:
+never run `--full-refresh` against a single cutoff on the marts once more than one cutoff's data
+exists in them. If a full refresh is ever needed (e.g. a schema change), rebuild ALL cutoffs
+immediately afterward (`make build` runs validation, A, and B in sequence) before trusting the
+warehouse again. Recovered in the sandbox by re-running all three `dbt build --vars ...`
+invocations in cutoff order.
