@@ -261,10 +261,15 @@ model is.
   did in Phase 3 (k=3 vs k=4), same already-documented sandbox-vs-real divergence as
   `p3_sandbox_test_log.txt`, not a new issue.
 - **LLM:** Groq, checked against Groq's own current model docs (not assumed): default model
-  `llama-3.3-70b-versatile`, one of Groq's current production chat models as of this check.
-  Configurable via an env var so Vikram can swap models without code changes. Temperature 0, per
-  the brief. The prompt instructs the model to write a short summary per segment for a
-  non-technical marketing reader, using only the numbers given for that segment, inventing none,
+  `llama-3.3-70b-versatile`, one of Groq's current production chat models as of this check. ~~This
+  default was wrong: the real live run on 2026-10-10 got a 404 from Groq's API because the model
+  had actually been retired on 2026-08-16, despite Groq's own docs page still listing it under
+  "Production Models" at the time of this check. Default swapped to `openai/gpt-oss-120b`, Groq's
+  own recommended replacement -- see BUGLOG.md entry 7.~~ Configurable via an env var so Vikram
+  can swap models without code changes (this is what actually unblocked the live run -- no new
+  zip needed). Temperature 0, per the brief. The prompt instructs the model to write a short
+  summary per segment for a non-technical marketing reader, using only the numbers given for that
+  segment, inventing none,
   and making no causal claims -- and explicitly lists the segment's own numbers in the prompt so
   the model is never asked to recall or guess them.
 - **Stub vs. real client:** a single `LLMClient` interface (`python/llm/client.py`) with two
@@ -297,3 +302,22 @@ value and its x100 percentage form, since a marketing-facing summary will very l
 245-day horizon is ever given to the model. `tests/test_phase4_llm_client.py` and
 `tests/test_phase4_verify.py` cover this, including one deliberately broken fixture per
 check.
+
+**Real run (2026-10-10):** `python/build_segment_stats.py` against the real warehouse
+reproduced Phase 3's "all customers" segmentation exactly (k=4, silhouette=0.376, same four
+segment sizes as `p3_segments.md`). `python/run_phase4.py` against the real Groq API hit a
+real issue not catchable in sandbox testing: the originally-chosen default model,
+`llama-3.3-70b-versatile`, had already been retired by Groq (shut down 2026-08-16, before this
+default was even picked on 2026-10-10), despite Groq's own docs page still listing it as a
+production model -- see BUGLOG.md entry 7. Unblocked immediately via the `GROQ_MODEL`
+environment variable override (no new code needed, confirming the env-var configurability
+decision above was worth locking in), default since changed to Groq's own recommended
+replacement, `openai/gpt-oss-120b`. All 4 real summaries passed verification (0 unsupported
+numbers, 0 unsupported segments, 0 causal markers), independently re-verified against the
+pasted output rather than just trusting the terminal's own PASS labels. One real limitation
+surfaced by actually reading the output, outside what the three locked checks cover: two of
+the four summaries label `mean_monetary_net` as "average purchase value," which overstates
+precision about what the number means (it's total net spend per customer, not a single order's
+size) -- not a wrong number, a wrong description of a correct number. See
+`docs/evidence/p4_llm_summaries.md`'s "Reading this result" for the full writeup; not fixed in
+this pass since it falls outside the three checks `docs/design.md` locked before this run.

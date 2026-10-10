@@ -1,0 +1,62 @@
+{
+  "generated": "2026-10-10",
+  "population_cutoff": "2011-09-01",
+  "clv_horizon_days": 245,
+  "churn_model": "LightGBM, tuned on validation cutoff, fit on train cutoff A, scored on population cutoff -- same procedure as docs/evidence/p2_results.md",
+  "clv_model": "BG/NBD + Gamma-Gamma, fit on train cutoff A calibration population, scored out-of-sample on population cutoff -- same procedure as docs/evidence/p3_clv_validation.md, accuracy characteristics there apply here unchanged",
+  "rounding_precision": {
+    "share_of_customers": 4,
+    "share_of_revenue": 4,
+    "mean_recency_days": 1,
+    "mean_frequency": 2,
+    "mean_monetary_net": 2,
+    "predicted_churn_rate": 4,
+    "predicted_clv_245d": 2
+  },
+  "segments": [
+    {
+      "segment_id": 2,
+      "n_customers": 860,
+      "share_of_customers": 0.1646,
+      "share_of_revenue": 0.681,
+      "mean_recency_days": 33.2,
+      "mean_frequency": 19.27,
+      "mean_monetary_net": 10314.83,
+      "predicted_churn_rate": 0.2725,
+      "predicted_clv_245d": 3707.84
+    },
+    {
+      "segment_id": 3,
+      "n_customers": 1522,
+      "share_of_customers": 0.2913,
+      "share_of_revenue": 0.2179,
+      "mean_recency_days": 202.1,
+      "mean_frequency": 5.13,
+      "mean_monetary_net": 1864.95,
+      "predicted_churn_rate": 0.6829,
+      "predicted_clv_245d": 565.31
+    },
+    {
+      "segment_id": 1,
+      "n_customers": 774,
+      "share_of_customers": 0.1482,
+      "share_of_revenue": 0.0491,
+      "mean_recency_days": 35.7,
+      "mean_frequency": 2.95,
+      "mean_monetary_net": 826.25,
+      "predicted_churn_rate": 0.625,
+      "predicted_clv_245d": 663.29
+    },
+    {
+      "segment_id": 0,
+      "n_customers": 2068,
+      "share_of_customers": 0.3959,
+      "share_of_revenue": 0.052,
+      "mean_recency_days": 339.6,
+      "mean_frequency": 1.39,
+      "mean_monetary_net": 327.46,
+      "predicted_churn_rate": 0.8397,
+      "predicted_clv_245d": 179.04
+    }
+  ]
+}

@@ -14,7 +14,9 @@ import re
 from dataclasses import dataclass
 from typing import Optional, Protocol
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"  # see BUGLOG.md entry 7: llama-3.3-70b-versatile was
+# retired by Groq on 2026-08-16, before this was first set as the default on 2026-10-10, despite
+# Groq's own docs page still listing it under "Production Models" as of that same date
 
 
 @dataclass
@@ -108,8 +110,8 @@ class GroqClient:
     """Calls the real Groq API. Requires the `groq` package (python/requirements.txt) and a
     GROQ_API_KEY environment variable -- read at call time, never hardcoded or committed.
     Model is configurable via the GROQ_MODEL environment variable; defaults to
-    llama-3.3-70b-versatile, one of Groq's current production chat models as checked against
-    Groq's own docs (see docs/design.md)."""
+    openai/gpt-oss-120b (see BUGLOG.md entry 7 for why the original default,
+    llama-3.3-70b-versatile, was swapped out after it turned out to already be retired)."""
 
     def __init__(self, model: Optional[str] = None) -> None:
         import groq  # imported here, not at module level, so StubClient usage never requires

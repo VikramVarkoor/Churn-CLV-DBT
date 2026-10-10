@@ -1,0 +1,58 @@
+[
+  {
+    "segment_id": 2,
+    "model": "openai/gpt-oss-120b",
+    "generated_at": "2026-10-10",
+    "temperature": 0.0,
+    "response_text": "This segment includes 860 customers, or about 16.46 % of the total customer base. These customers account for roughly 68.1 % of revenue, with an average purchase value of $10,314.83 and about 19.27 transactions per customer. On average they bought something 33.2 days ago, the predicted churn rate is 27.25 %, and the projected 245-day customer-lifetime value is $3,707.84.",
+    "verdict": {
+      "segment_id": 2,
+      "passed": true,
+      "unsupported_numbers": [],
+      "unsupported_segments": [],
+      "causal_markers": []
+    }
+  },
+  {
+    "segment_id": 3,
+    "model": "openai/gpt-oss-120b",
+    "generated_at": "2026-10-10",
+    "temperature": 0.0,
+    "response_text": "Segment 3 includes 1,522 customers, about 29 % of the total customer base, and accounts for roughly 22 % of revenue. These customers average 5.1 purchases, spend about $1,865 each, and were last active around 202 days ago. The predicted churn rate for this group is about 68 %, with an estimated 245-day customer-lifetime value of $565.",
+    "verdict": {
+      "segment_id": 3,
+      "passed": true,
+      "unsupported_numbers": [],
+      "unsupported_segments": [],
+      "causal_markers": []
+    }
+  },
+  {
+    "segment_id": 1,
+    "model": "openai/gpt-oss-120b",
+    "generated_at": "2026-10-10",
+    "temperature": 0.0,
+    "response_text": "Segment 1 includes 774 customers, about 14.8 % of the total customer base. These customers account for roughly 4.9 % of revenue, with an average purchase value of $826.25 and about 3 purchases per customer. Their most recent purchase was on average 35.7 days ago and the predicted churn rate is 62.5 %. The 245-day predicted customer-lifetime value for this group is $663.29.",
+    "verdict": {
+      "segment_id": 1,
+      "passed": true,
+      "unsupported_numbers": [],
+      "unsupported_segments": [],
+      "causal_markers": []
+    }
+  },
+  {
+    "segment_id": 0,
+    "model": "openai/gpt-oss-120b",
+    "generated_at": "2026-10-10",
+    "temperature": 0.0,
+    "response_text": "This segment includes 2,068 customers, about 39.6 % of all customers but only roughly 5.2 % of total revenue. On average, they make 1.39 purchases, spend around $327.46, and their most recent purchase was about 340 days ago. The predicted churn probability is 84 % and the 245-day customer-lifetime value is about $179.04.",
+    "verdict": {
+      "segment_id": 0,
+      "passed": true,
+      "unsupported_numbers": [],
+      "unsupported_segments": [],
+      "causal_markers": []
+    }
+  }
+]

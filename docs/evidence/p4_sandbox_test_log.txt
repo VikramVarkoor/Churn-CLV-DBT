@@ -98,9 +98,36 @@ for real evidence. All three are regenerated fresh -- segment_stats.json by
 build_segment_stats.py against the real warehouse, the other two by run_phase4.py (without
 --stub, i.e. the real Groq call) against that real segment_stats.json.
 
---- Real run: pending ---
-Not yet run against the real warehouse or the real Groq API. Vikram needs, in order: (1) run
-python/build_segment_stats.py against the real warehouse, same workflow as Phases 2 and 3;
-(2) get a Groq API key and set GROQ_API_KEY; (3) run python/run_phase4.py (no --stub) to get
-real LLM summaries and a real verification report. Paste the output back so it gets logged as
-real evidence and committed.
+--- Real run, step 1 of 2: python/build_segment_stats.py against the real warehouse ---
+Vikram ran this against the real warehouse (same cutoffs as Phases 2/3: validation
+2010-12-01, train/A 2011-03-01, test/B 2011-09-01). Completed cleanly: chose k=4
+(silhouette=0.376), matching p3_segments.md's real "all customers" run exactly (same k, same
+silhouette) -- confirms the segmentation step here is a genuine re-run of Phase 3's own code,
+not a different result. Segment sizes (860, 1522, 774, 2068) and every RFM mean/share in the
+output match p3_segments.md's "all customers" table after rounding, which is the main thing
+worth checking here: this script's only new logic is the join across segmentation + churn +
+CLV outputs, and if that join were scrambling customer_id alignment, these numbers would not
+line up with Phase 3's already-reported, independently-produced ones.
+
+The new churn/CLV numbers are directionally consistent with what Phase 2 and Phase 3 would
+predict: ordering the four segments by mean_recency_days (seg2=33.2, seg1=35.7, seg3=202.1,
+seg0=339.6), predicted_churn_rate rises monotonically in exactly that order (0.2725, 0.625,
+0.6829, 0.8397) and predicted_clv_245d falls monotonically in exactly that order (3707.84,
+663.29, 565.31, 179.04). Both models rank these four segments by recency alone, with no
+reversal. This is a weaker check than it looks: recency is strongly correlated with frequency
+and monetary_net here too (segment 1, the one segment that's recent but low-value, still slots
+in between segment 2 and segment 3 on both churn and CLV, consistent with its frequency/
+monetary_net also sitting between theirs), so this monotonicity doesn't by itself prove
+recency specifically is driving the LightGBM and CLV predictions rather than frequency or
+monetary_net riding along with it -- that attribution question isn't answered here and isn't
+what this check was for. What this check does establish: the join across segmentation, churn,
+and CLV outputs produced a result with no scrambled or nonsensical row, which is what a
+join bug would most likely look like.
+
+Full real output logged in docs/evidence/segment_stats.json (committed once Phase 4's LLM step
+also has real output, same one-commit-per-phase pattern as Phase 3).
+
+--- Real run, step 2 of 2: python/run_phase4.py (real Groq call) -- pending ---
+Vikram still needs to get a Groq API key, export GROQ_API_KEY, and run
+`python3 python/run_phase4.py` (no --stub) to get real LLM summaries and a real verification
+report over the segment_stats.json above.

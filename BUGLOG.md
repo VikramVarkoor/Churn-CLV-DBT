@@ -197,3 +197,33 @@ model, and `predict_clv()` uses that empirical mean as the monetary-value plug-i
 frequency_repeat=0 customers, documented inline in the code rather than silently swapped. This
 is a simpler, always-positive estimate, at the cost of not being a model-based prediction for
 that subgroup -- an honest tradeoff, not a hidden one.
+
+## 7. Groq's default model (`llama-3.3-70b-versatile`) was already retired, despite Groq's own
+   docs page listing it as a current production model
+
+**Symptom:** Vikram's first real `python3 python/run_phase4.py` call, right after getting a
+real `GROQ_API_KEY`, failed immediately with `groq.NotFoundError: Error code: 404 - ... 'The
+model `llama-3.3-70b-versatile` does not exist or you do not have access to it.'`
+
+**How found:** Not caught in sandbox testing -- `StubClient` never calls the real API, so this
+could only surface on a real Groq call, which requires a real key Vikram didn't have until
+Phase 4's live-run step. This is a real gap in what sandbox testing with a stub client can
+catch, not a process failure: the whole point of a stub/real split is that the stub can't
+exercise the live API's own behavior.
+
+**Root cause:** Groq retired `llama-3.3-70b-versatile` on 2026-08-16. The model was picked as
+Phase 4's default on 2026-10-10 (almost two months after the retirement) after checking Groq's
+own docs page (console.groq.com/docs/models), which, re-checked after this failure, still lists
+`llama-3.3-70b-versatile` under "Production Models" -- Groq's docs page itself is stale or
+wrong, not just the design-time check. The deprecations page
+(console.groq.com/docs/deprecations) has the real shutdown date and names
+`openai/gpt-oss-120b` as the recommended replacement.
+
+**Fix:** Default model in `python/llm/client.py` (`DEFAULT_GROQ_MODEL`) changed to
+`openai/gpt-oss-120b`. Vikram unblocked immediately without waiting for a new zip by setting
+the `GROQ_MODEL` environment variable, which `GroqClient.__init__` already read as an override
+-- this is exactly the scenario that env-var configurability (locked in docs/design.md's Phase
+4 decisions) was for. No code or prompt logic needed to change, only which model name is sent.
+Lesson for anyone extending this: do not trust a vendor's own "current models" docs page at
+face value for whether a specific model ID is actually callable; the deprecations/changelog
+page is the one that had the accurate, dated answer here.
